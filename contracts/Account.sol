@@ -210,6 +210,8 @@ contract Account {
         private
         returns (address) 
     {
+        require(wallets.length < 100, "Max 100 wallets per account");
+
         address keypairAddress;
 
         if (keypairSecret == bytes32(0)) {
