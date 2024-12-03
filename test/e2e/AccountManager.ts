@@ -7,9 +7,9 @@ const curve_utils = require('@noble/curves/abstract/utils');
 const SAPPHIRE_LOCALNET = 23293;
 const GAS_LIMIT = 1000000;
 const ACCOUNT_ABI = [
-  'function signEIP155((uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
-  'function sign(bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
-  'function exportPrivateKey() view returns (bytes32)',
+  'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
+  'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
+  'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
 ];
 
 describe("AccountManager", function() {
@@ -26,6 +26,15 @@ describe("AccountManager", function() {
   const WRONG_PASSWORD  = "0x0000000000000000000000000000000000000000000000000000009999999999";
 
   const RANDOM_STRING  = "0x000000000000000000000000000000000000000000000000000000000000DEAD";
+
+  const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+  const WALLET_TYPE_EVM = 0;
+  const WALLET_TYPE_SUBSTRATE = 1;
+  const WALLET_TYPE_BITCOIN = 2;
+
+  const WALLET_IDX_0 = 0;
+  const WALLET_IDX_1 = 1;
 
   const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
@@ -73,7 +82,7 @@ describe("AccountManager", function() {
     expect(await WA.userExists(username)).to.equal(true);
 
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_data = iface.encodeFunctionData('sign', [RANDOM_STRING]);
+    const in_data = iface.encodeFunctionData('sign', [WALLET_IDX_0, RANDOM_STRING]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
@@ -97,7 +106,7 @@ describe("AccountManager", function() {
     expect(await WA.userExists(username)).to.equal(true);
 
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_data = iface.encodeFunctionData('exportPrivateKey', []);
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
@@ -112,6 +121,63 @@ describe("AccountManager", function() {
 
     const unlockedWallet = new hre.ethers.Wallet(exportedPrivateKey);
     expect(unlockedWallet.address).to.equal(accountData.publicKey);
+  });
+
+  it("Import PK", async function() {
+    const username = hashedUsername("testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    expect(await WA.userExists(username)).to.equal(true);
+
+    const newWallet = ethers.Wallet.createRandom();
+    
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey,
+      title: "Second wallet",
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret, string title)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported
+    const accountWallets = await WA.getAccountWallets(username);
+
+    expect(accountWallets[0].keypairAddress).to.equal(accountData.publicKey);
+    expect(accountWallets[1].keypairAddress).to.equal(newWallet.address);
+
+    // Try to export, imported wallet
+    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, in_digest, in_data
+    );
+
+    const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
+
+    expect(exportedPrivateKey).to.equal(newWallet.privateKey);
   });
 
   it("Register + preventing duplicates", async function() {
@@ -270,7 +336,7 @@ describe("AccountManager", function() {
     };
     
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_data = iface.encodeFunctionData('signEIP155', [txRequest]);
+    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
@@ -378,7 +444,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const data = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -391,7 +456,7 @@ describe("AccountManager", function() {
     };
 
     const encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -404,6 +469,7 @@ describe("AccountManager", function() {
 
       const tx_wrong = await WA.manageCredentialPassword(
         {
+          hashedUsername: username,
           digest: digest_wrong,
           data: encoded_data
         }
@@ -421,6 +487,7 @@ describe("AccountManager", function() {
 
     const tx = await WA.manageCredentialPassword(
       {
+        hashedUsername: username,
         digest,
         data: encoded_data
       }
@@ -467,7 +534,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const data = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -480,7 +546,7 @@ describe("AccountManager", function() {
     };
 
     const encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -568,7 +634,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const credentialData = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -581,7 +646,7 @@ describe("AccountManager", function() {
     };
 
     const credentialDataEncoded = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ credentialData ]
     );
 
@@ -591,8 +656,8 @@ describe("AccountManager", function() {
     );
 
     const funcData = abiCoder.encode(
-      [ "tuple(bytes32 digest, bytes data)" ], 
-      [ { digest, data: credentialDataEncoded } ]
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: credentialDataEncoded } ]
     );
 
     let gaslessData = abiCoder.encode(
@@ -638,7 +703,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const data = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -651,7 +715,7 @@ describe("AccountManager", function() {
     };
 
     let encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -664,6 +728,7 @@ describe("AccountManager", function() {
 
       const tx_wrong = await WA.manageCredentialPassword(
         {
+          hashedUsername: username,
           digest: digest_wrong,
           data: encoded_data
         }
@@ -681,6 +746,7 @@ describe("AccountManager", function() {
 
     let tx = await WA.manageCredentialPassword(
       {
+        hashedUsername: username,
         digest,
         data: encoded_data
       }
@@ -726,7 +792,7 @@ describe("AccountManager", function() {
     data.action = CREDENTIAL_ACTION_REMOVE;
 
     encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -738,6 +804,7 @@ describe("AccountManager", function() {
 
     const tx_remove = await WA.manageCredentialPassword(
       {
+        hashedUsername: username,
         digest,
         data: encoded_data
       }
@@ -775,7 +842,7 @@ describe("AccountManager", function() {
       data.pubkey.y = keyPair.decoded_y;
 
       encoded_data = abiCoder.encode(
-        [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+        [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
         [ data ]
       );
 
@@ -787,6 +854,7 @@ describe("AccountManager", function() {
 
       tx = await WA.manageCredentialPassword(
         {
+          hashedUsername: username,
           digest,
           data: encoded_data
         }
@@ -807,7 +875,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const data = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -820,7 +887,7 @@ describe("AccountManager", function() {
     };
 
     let encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -833,6 +900,7 @@ describe("AccountManager", function() {
 
       const tx_wrong = await WA.manageCredentialPassword(
         {
+          hashedUsername: username,
           digest: digest_wrong,
           data: encoded_data
         }
@@ -850,6 +918,7 @@ describe("AccountManager", function() {
 
     let tx = await WA.manageCredentialPassword(
       {
+        hashedUsername: username,
         digest,
         data: encoded_data
       }
@@ -895,7 +964,7 @@ describe("AccountManager", function() {
     data.action = CREDENTIAL_ACTION_REMOVE;
 
     encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -971,7 +1040,6 @@ describe("AccountManager", function() {
     const keyPair = generateNewKeypair();
 
     const data = {
-      hashedUsername: username,
       credentialId: keyPair.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -984,7 +1052,7 @@ describe("AccountManager", function() {
     };
 
     let encoded_data = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ data ]
     );
 
@@ -995,6 +1063,7 @@ describe("AccountManager", function() {
 
     let tx = await WA.manageCredentialPassword(
       {
+        hashedUsername: username,
         digest,
         data: encoded_data
       }
@@ -1010,7 +1079,6 @@ describe("AccountManager", function() {
     const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
 
     const credentialData = {
-      hashedUsername: username,
       credentialId: accountData.credentials[0].credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
@@ -1023,7 +1091,7 @@ describe("AccountManager", function() {
     };
 
     const credentialDataEncoded = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
+      [ "tuple(bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, uint8 action)" ], 
       [ credentialData ]
     );
 
@@ -1033,8 +1101,8 @@ describe("AccountManager", function() {
     );
 
     const funcData = abiCoder.encode(
-      [ "tuple(bytes32 digest, bytes data)" ], 
-      [ { digest, data: credentialDataEncoded } ]
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: credentialDataEncoded } ]
     );
 
     let gaslessData = abiCoder.encode(
@@ -1088,17 +1156,23 @@ describe("AccountManager", function() {
         x: keyPair.decoded_x,
         y: keyPair.decoded_y,
       },
-      optionalPassword: password
+      optionalPassword: password,
+      wallet: {
+        walletType: WALLET_TYPE_EVM,
+        keypairSecret: BYTES32_ZERO, // create new wallet
+        title: "Default wallet",
+      }
     };
 
     const tx = await WA.createAccount(registerData);
     await tx.wait();
 
-    const userData = await WA.getAccount(username);
+    const accountWallets = await WA.getAccountWallets(username);
 
     return {
       ...registerData,
-      publicKey: userData[1],
+      publicKey: accountWallets[0].keypairAddress,
+      accountWallets,
       credentials: [
         keyPair
       ]
@@ -1121,7 +1195,7 @@ describe("AccountManager", function() {
     };
     
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_data = iface.encodeFunctionData('signEIP155', [txRequest]);
+    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     // Create & encode challange
     const challange = await HELPER.createChallengeBase64(in_data, personalization);

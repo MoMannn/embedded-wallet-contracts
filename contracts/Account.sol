@@ -4,7 +4,20 @@ pragma solidity ^0.8.0;
 
 import {SignatureRSV, EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
+import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
 import {CloneFactory} from "./lib/CloneFactory.sol";
+
+enum WalletType {
+    EVM,
+    SUBSTRATE,
+    BITCOIN
+}
+
+struct Wallet {
+    WalletType walletType;
+    address keypairAddress;
+    string title;
+}
 
 contract AccountFactory is CloneFactory {
     Account private account;
@@ -13,12 +26,22 @@ contract AccountFactory is CloneFactory {
         account = new Account();
     }
 
-    function clone (address starterOwner)
+    function clone (
+        address starterOwner,
+        WalletType walletType,
+        bytes32 keypairSecret,
+        string memory title
+    )
         public
         returns (Account acct)
     {
         acct = Account(createClone(address(account)));
-        acct.init(starterOwner);
+        acct.init(
+            starterOwner,
+            walletType,
+            keypairSecret,
+            title
+        );
     }
 }
 
@@ -27,9 +50,9 @@ contract Account {
 
     mapping(address => bool) private _controllers;
 
-    address public keypairAddress;
+    Wallet[] private wallets;
 
-    bytes32 private keypairSecret;
+    mapping(WalletType => mapping(address => bytes32)) private walletSecret;
 
     constructor () {
         _initialized = true;
@@ -42,14 +65,19 @@ contract Account {
         return _controllers[who];
     }
 
-    function init (address starterOwner)
+    function init (
+        address starterOwner, 
+        WalletType walletType,
+        bytes32 keypairSecret,
+        string memory title
+    )
         public
     {
         require( ! _initialized, "AlreadyInitialized" );
 
         _controllers[starterOwner] = true;
 
-        (keypairAddress, keypairSecret) = EthereumUtils.generateKeypair();
+        address keypairAddress = _createWallet(walletType, keypairSecret, title);
 
         _controllers[keypairAddress] = true;
 
@@ -70,28 +98,60 @@ contract Account {
         _controllers[who] = status;
     }
 
-    function signEIP155 (EIP155Signer.EthTx calldata txToSign)
+    function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
         public view
         onlyByController
         returns (bytes memory)
     {
-        return EIP155Signer.sign(keypairAddress, keypairSecret, txToSign);
+        require(walletId < wallets.length, "Invalid wallet id");
+        Wallet memory wal = wallets[walletId];
+
+        return EIP155Signer.sign(
+            wal.keypairAddress, 
+            walletSecret[wal.walletType][wal.keypairAddress], 
+            txToSign
+        );
     }
 
-    function sign (bytes32 digest)
+    function sign (uint256 walletId, bytes32 digest)
         public view
         onlyByController
         returns (SignatureRSV memory)
     {
-        return EthereumUtils.sign(keypairAddress, keypairSecret, digest);
+        require(walletId < wallets.length, "Invalid wallet id");
+        Wallet memory wal = wallets[walletId];
+
+        return EthereumUtils.sign(
+            wal.keypairAddress, 
+            walletSecret[wal.walletType][wal.keypairAddress], 
+            digest
+        );
     }
 
-    function exportPrivateKey ()
+    function getWalletList ()
+        public view 
+        onlyByController
+        returns (Wallet[] memory) 
+    {
+        return wallets;
+    }
+
+    function walletAddress (uint256 walletId)
+        public view 
+        onlyByController
+        returns (address) 
+    {
+        require(walletId < wallets.length, "Invalid wallet id");
+        return wallets[walletId].keypairAddress;
+    }
+
+    function exportPrivateKey (uint256 walletId)
         public view
         onlyByController
         returns (bytes32)
     {
-        return keypairSecret;
+        Wallet memory wal = wallets[walletId];
+        return walletSecret[wal.walletType][wal.keypairAddress];
     }
 
     function transfer (address in_target, uint256 amount)
@@ -125,5 +185,63 @@ contract Account {
             switch success
             case 0 { revert(add(out_data,32),mload(out_data)) }
         }
+    }
+
+    function createWallet (
+        WalletType walletType,
+        bytes32 keypairSecret,
+        string memory title
+    )
+        external
+        onlyByController
+        returns (address) 
+    {
+        return _createWallet(walletType, keypairSecret, title);
+    }
+
+    /**
+      * PRIVATE FUNCTIONS 
+      */
+    function _createWallet (
+        WalletType walletType,
+        bytes32 keypairSecret,
+        string memory title
+    )
+        private
+        returns (address) 
+    {
+        address keypairAddress;
+
+        if (keypairSecret == bytes32(0)) {
+            (keypairAddress, keypairSecret) = EthereumUtils.generateKeypair();
+
+        } else {
+            // Generate publicKey from privateKey
+            bytes memory keypairSecretB = abi.encodePacked(keypairSecret);
+
+            (bytes memory pk, ) = Sapphire.generateSigningKeyPair(
+                Sapphire.SigningAlg.Secp256k1PrehashedKeccak256,
+                keypairSecretB
+            );
+
+            keypairAddress = EthereumUtils.k256PubkeyToEthereumAddress(pk);
+        }
+
+        require(
+            walletSecret[walletType][keypairAddress] == bytes32(0), 
+            "Wallet already imported"
+        );
+
+        wallets.push(
+            Wallet(
+                walletType,
+                keypairAddress,
+                title
+            )
+        );
+
+        walletSecret[walletType][keypairAddress] = keypairSecret;
+
+        return keypairAddress;
     }
 }

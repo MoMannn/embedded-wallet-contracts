@@ -3,6 +3,7 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumberish,
   BytesLike,
   FunctionFragment,
   Result,
@@ -23,7 +24,10 @@ import type {
 export interface IAccountFactoryInterface extends Interface {
   getFunction(nameOrSignature: "clone"): FunctionFragment;
 
-  encodeFunctionData(functionFragment: "clone", values: [AddressLike]): string;
+  encodeFunctionData(
+    functionFragment: "clone",
+    values: [AddressLike, BigNumberish, BytesLike, string]
+  ): string;
 
   decodeFunctionResult(functionFragment: "clone", data: BytesLike): Result;
 }
@@ -72,7 +76,12 @@ export interface IAccountFactory extends BaseContract {
   ): Promise<this>;
 
   clone: TypedContractMethod<
-    [starterOwner: AddressLike],
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike,
+      title: string
+    ],
     [string],
     "nonpayable"
   >;
@@ -83,7 +92,16 @@ export interface IAccountFactory extends BaseContract {
 
   getFunction(
     nameOrSignature: "clone"
-  ): TypedContractMethod<[starterOwner: AddressLike], [string], "nonpayable">;
+  ): TypedContractMethod<
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike,
+      title: string
+    ],
+    [string],
+    "nonpayable"
+  >;
 
   filters: {};
 }

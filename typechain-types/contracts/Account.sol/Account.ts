@@ -21,6 +21,18 @@ import type {
   TypedContractMethod,
 } from "../../common";
 
+export type WalletStruct = {
+  walletType: BigNumberish;
+  keypairAddress: AddressLike;
+  title: string;
+};
+
+export type WalletStructOutput = [
+  walletType: bigint,
+  keypairAddress: string,
+  title: string
+] & { walletType: bigint; keypairAddress: string; title: string };
+
 export type SignatureRSVStruct = {
   r: BytesLike;
   s: BytesLike;
@@ -67,15 +79,17 @@ export interface AccountInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "call"
+      | "createWallet"
       | "exportPrivateKey"
+      | "getWalletList"
       | "init"
       | "isController"
-      | "keypairAddress"
       | "modifyController"
       | "sign"
       | "signEIP155"
       | "staticcall"
       | "transfer"
+      | "walletAddress"
   ): FunctionFragment;
 
   encodeFunctionData(
@@ -83,26 +97,36 @@ export interface AccountInterface extends Interface {
     values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "createWallet",
+    values: [BigNumberish, BytesLike, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "exportPrivateKey",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getWalletList",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: "init", values: [AddressLike]): string;
+  encodeFunctionData(
+    functionFragment: "init",
+    values: [AddressLike, BigNumberish, BytesLike, string]
+  ): string;
   encodeFunctionData(
     functionFragment: "isController",
     values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "keypairAddress",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
     functionFragment: "modifyController",
     values: [AddressLike, boolean]
   ): string;
-  encodeFunctionData(functionFragment: "sign", values: [BytesLike]): string;
+  encodeFunctionData(
+    functionFragment: "sign",
+    values: [BigNumberish, BytesLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "signEIP155",
-    values: [EIP155Signer.EthTxStruct]
+    values: [BigNumberish, EIP155Signer.EthTxStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "staticcall",
@@ -112,19 +136,27 @@ export interface AccountInterface extends Interface {
     functionFragment: "transfer",
     values: [AddressLike, BigNumberish]
   ): string;
+  encodeFunctionData(
+    functionFragment: "walletAddress",
+    values: [BigNumberish]
+  ): string;
 
   decodeFunctionResult(functionFragment: "call", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "createWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "exportPrivateKey",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getWalletList",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "init", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isController",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "keypairAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -135,6 +167,10 @@ export interface AccountInterface extends Interface {
   decodeFunctionResult(functionFragment: "signEIP155", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "walletAddress",
+    data: BytesLike
+  ): Result;
 }
 
 export interface Account extends BaseContract {
@@ -186,13 +222,32 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
-  exportPrivateKey: TypedContractMethod<[], [string], "view">;
+  createWallet: TypedContractMethod<
+    [walletType: BigNumberish, keypairSecret: BytesLike, title: string],
+    [string],
+    "nonpayable"
+  >;
 
-  init: TypedContractMethod<[starterOwner: AddressLike], [void], "nonpayable">;
+  exportPrivateKey: TypedContractMethod<
+    [walletId: BigNumberish],
+    [string],
+    "view"
+  >;
+
+  getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
+
+  init: TypedContractMethod<
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike,
+      title: string
+    ],
+    [void],
+    "nonpayable"
+  >;
 
   isController: TypedContractMethod<[who: AddressLike], [boolean], "view">;
-
-  keypairAddress: TypedContractMethod<[], [string], "view">;
 
   modifyController: TypedContractMethod<
     [who: AddressLike, status: boolean],
@@ -201,13 +256,13 @@ export interface Account extends BaseContract {
   >;
 
   sign: TypedContractMethod<
-    [digest: BytesLike],
+    [walletId: BigNumberish, digest: BytesLike],
     [SignatureRSVStructOutput],
     "view"
   >;
 
   signEIP155: TypedContractMethod<
-    [txToSign: EIP155Signer.EthTxStruct],
+    [walletId: BigNumberish, txToSign: EIP155Signer.EthTxStruct],
     [string],
     "view"
   >;
@@ -224,6 +279,12 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  walletAddress: TypedContractMethod<
+    [walletId: BigNumberish],
+    [string],
+    "view"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -236,17 +297,33 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "createWallet"
+  ): TypedContractMethod<
+    [walletType: BigNumberish, keypairSecret: BytesLike, title: string],
+    [string],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "exportPrivateKey"
-  ): TypedContractMethod<[], [string], "view">;
+  ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "getWalletList"
+  ): TypedContractMethod<[], [WalletStructOutput[]], "view">;
   getFunction(
     nameOrSignature: "init"
-  ): TypedContractMethod<[starterOwner: AddressLike], [void], "nonpayable">;
+  ): TypedContractMethod<
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike,
+      title: string
+    ],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "isController"
   ): TypedContractMethod<[who: AddressLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "keypairAddress"
-  ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "modifyController"
   ): TypedContractMethod<
@@ -257,14 +334,14 @@ export interface Account extends BaseContract {
   getFunction(
     nameOrSignature: "sign"
   ): TypedContractMethod<
-    [digest: BytesLike],
+    [walletId: BigNumberish, digest: BytesLike],
     [SignatureRSVStructOutput],
     "view"
   >;
   getFunction(
     nameOrSignature: "signEIP155"
   ): TypedContractMethod<
-    [txToSign: EIP155Signer.EthTxStruct],
+    [walletId: BigNumberish, txToSign: EIP155Signer.EthTxStruct],
     [string],
     "view"
   >;
@@ -282,6 +359,9 @@ export interface Account extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "walletAddress"
+  ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
 
   filters: {};
 }

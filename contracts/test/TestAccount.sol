@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {Account,AccountFactory} from "../Account.sol";
+import {Account,AccountFactory,WalletType} from "../Account.sol";
 
 contract TestAccount {
     AccountFactory private factory;
@@ -13,7 +13,7 @@ contract TestAccount {
     function testClone()
         public
     {
-        Account acct = factory.clone(msg.sender);
+        Account acct = factory.clone(msg.sender, WalletType.EVM, bytes32(0), "Test wallet");
         emit CloneCreated(address(acct));
     }
 }
