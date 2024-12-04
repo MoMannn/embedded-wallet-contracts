@@ -10,6 +10,9 @@ const ACCOUNT_ABI = [
   'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
   'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
   'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
+  'function getWalletList() view returns ((uint8 walletType, address keypairAddress, string title)[])',
+  'function walletAddress (uint256 walletId) view returns (address)',
+  'function updateTitle(uint256 walletId,string title)',
 ];
 
 describe("AccountManager", function() {
@@ -157,7 +160,7 @@ describe("AccountManager", function() {
     await tx.wait();
 
     // Check if wallet correctly imported
-    const accountWallets = await WA.getAccountWallets(username);
+    const accountWallets = await getAccountWallets(username);
 
     expect(accountWallets[0].keypairAddress).to.equal(accountData.publicKey);
     expect(accountWallets[1].keypairAddress).to.equal(newWallet.address);
@@ -178,6 +181,89 @@ describe("AccountManager", function() {
     const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
 
     expect(exportedPrivateKey).to.equal(newWallet.privateKey);
+  });
+
+  it("Update wallet", async function() {
+    const username = hashedUsername("testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+    
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey,
+      title: "Second wallet",
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret, string title)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported
+    let accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets[0].title).to.equal("Default wallet");
+    expect(accountWallets[1].title).to.equal("Second wallet");
+
+    // top-up wallet
+    await owner.sendTransaction({
+      to: accountWallets[0].keypairAddress,
+      value: ethers.parseEther("0.1"), // Sends exactly 0.1 ether
+    });
+
+    const accountAddress = await WA.getAccount(username);
+
+    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const in_inner_data = iface.encodeFunctionData('updateTitle', [WALLET_IDX_1, "Updated wallet"]);;
+
+    // Update second wallet
+    const txRequest = {
+      to: accountAddress,
+      data: in_inner_data,
+      gasLimit: 1000000,
+      value: 0,
+      nonce: 0,
+      chainId: SAPPHIRE_LOCALNET,
+      gasPrice: 100000000000, // 100 gwei
+    };
+    
+    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, in_digest, in_data
+    );
+
+    const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+
+    // Broadcast transaction
+    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // Check if wallet correctly imported
+    accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets[0].title).to.equal("Default wallet");
+    expect(accountWallets[1].title).to.equal("Updated wallet");
   });
 
   it("Register + preventing duplicates", async function() {
@@ -1167,12 +1253,23 @@ describe("AccountManager", function() {
     const tx = await WA.createAccount(registerData);
     await tx.wait();
 
-    const accountWallets = await WA.getAccountWallets(username);
+    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const in_data = iface.encodeFunctionData('walletAddress', [WALLET_IDX_0]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, in_digest, in_data
+    );
+
+    const [publicKey] = iface.decodeFunctionResult('walletAddress', resp).toArray();
 
     return {
       ...registerData,
-      publicKey: accountWallets[0].keypairAddress,
-      accountWallets,
+      publicKey,
       credentials: [
         keyPair
       ]
@@ -1262,6 +1359,24 @@ describe("AccountManager", function() {
       await new Promise(f => setTimeout(f, 500));
     }
     return;
+  }
+
+  async function getAccountWallets(username) {
+    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const in_data = iface.encodeFunctionData('getWalletList', []);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, in_digest, in_data
+    );
+
+    const [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
+
+    return accountWallets;
   }
   
 });

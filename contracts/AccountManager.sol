@@ -195,21 +195,9 @@ contract AccountManager is AccountManagerStorage,
      */
     function getAccount (bytes32 in_username)
         external view
-        returns (Account account)
+        returns (address)
     {
-        account = users[in_username].account;
-    }
-
-    /**
-     * @dev Get account wallets for username
-     *
-     * @param in_username hashed username
-     */
-    function getAccountWallets (bytes32 in_username)
-        external view
-        returns (Wallet[] memory)
-    {
-        return users[in_username].account.getWalletList();
+        return address(users[in_username].account);
     }
 
     /**

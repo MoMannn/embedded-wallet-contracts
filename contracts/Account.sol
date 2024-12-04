@@ -77,9 +77,7 @@ contract Account {
 
         _controllers[starterOwner] = true;
 
-        address keypairAddress = _createWallet(walletType, keypairSecret, title);
-
-        _controllers[keypairAddress] = true;
+        _createWallet(walletType, keypairSecret, title);
 
         _initialized = true;
     }
@@ -199,6 +197,18 @@ contract Account {
         return _createWallet(walletType, keypairSecret, title);
     }
 
+    function updateTitle (
+        uint256 walletId,
+        string memory title
+    )
+        external
+        onlyByController
+    {
+        require(walletId < wallets.length, "Invalid wallet id");
+        require(bytes(title).length > 0, "Title cannot be empty");
+        wallets[walletId].title = title;
+    }
+
     /**
       * PRIVATE FUNCTIONS 
       */
@@ -243,6 +253,10 @@ contract Account {
         );
 
         walletSecret[walletType][keypairAddress] = keypairSecret;
+
+        if (walletType == WalletType.EVM) {
+            _controllers[keypairAddress] = true;
+        }
 
         return keypairAddress;
     }

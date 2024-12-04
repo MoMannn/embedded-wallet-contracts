@@ -120,18 +120,6 @@ export type NewAccountStructOutput = [
   wallet: WalletDataStructOutput;
 };
 
-export type WalletStruct = {
-  walletType: BigNumberish;
-  keypairAddress: AddressLike;
-  title: string;
-};
-
-export type WalletStructOutput = [
-  walletType: bigint,
-  keypairAddress: string,
-  title: string
-] & { walletType: bigint; keypairAddress: string; title: string };
-
 export declare namespace MakeJSON {
   export type KeyValueStruct = { t: BigNumberish; k: string; v: string };
 
@@ -155,7 +143,6 @@ export interface AccountManagerInterface extends Interface {
       | "gaspayingAddress"
       | "generateGaslessTx"
       | "getAccount"
-      | "getAccountWallets"
       | "getRoleAdmin"
       | "grantRole"
       | "hasRole"
@@ -233,10 +220,6 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "getAccount",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getAccountWallets",
     values: [BytesLike]
   ): string;
   encodeFunctionData(
@@ -348,10 +331,6 @@ export interface AccountManagerInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getAccount", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "getAccountWallets",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
@@ -607,12 +586,6 @@ export interface AccountManager extends BaseContract {
 
   getAccount: TypedContractMethod<[in_username: BytesLike], [string], "view">;
 
-  getAccountWallets: TypedContractMethod<
-    [in_username: BytesLike],
-    [WalletStructOutput[]],
-    "view"
-  >;
-
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
 
   grantRole: TypedContractMethod<
@@ -763,13 +736,6 @@ export interface AccountManager extends BaseContract {
   getFunction(
     nameOrSignature: "getAccount"
   ): TypedContractMethod<[in_username: BytesLike], [string], "view">;
-  getFunction(
-    nameOrSignature: "getAccountWallets"
-  ): TypedContractMethod<
-    [in_username: BytesLike],
-    [WalletStructOutput[]],
-    "view"
-  >;
   getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;

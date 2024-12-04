@@ -89,6 +89,7 @@ export interface AccountInterface extends Interface {
       | "signEIP155"
       | "staticcall"
       | "transfer"
+      | "updateTitle"
       | "walletAddress"
   ): FunctionFragment;
 
@@ -137,6 +138,10 @@ export interface AccountInterface extends Interface {
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "updateTitle",
+    values: [BigNumberish, string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "walletAddress",
     values: [BigNumberish]
   ): string;
@@ -167,6 +172,10 @@ export interface AccountInterface extends Interface {
   decodeFunctionResult(functionFragment: "signEIP155", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "updateTitle",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "walletAddress",
     data: BytesLike
@@ -279,6 +288,12 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  updateTitle: TypedContractMethod<
+    [walletId: BigNumberish, title: string],
+    [void],
+    "nonpayable"
+  >;
+
   walletAddress: TypedContractMethod<
     [walletId: BigNumberish],
     [string],
@@ -356,6 +371,13 @@ export interface Account extends BaseContract {
     nameOrSignature: "transfer"
   ): TypedContractMethod<
     [in_target: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "updateTitle"
+  ): TypedContractMethod<
+    [walletId: BigNumberish, title: string],
     [void],
     "nonpayable"
   >;
