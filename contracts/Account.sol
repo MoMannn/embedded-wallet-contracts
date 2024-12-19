@@ -2,57 +2,19 @@
 
 pragma solidity ^0.8.0;
 
-import {SignatureRSV, EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
-import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
-import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
-import {CloneFactory} from "./lib/CloneFactory.sol";
-
-enum WalletType {
-    EVM,
-    SUBSTRATE,
-    BITCOIN
-}
-
 struct Wallet {
-    WalletType walletType;
     address keypairAddress;
     string title;
 }
 
-contract AccountFactory is CloneFactory {
-    Account private account;
+abstract contract Account {
+    bool internal _initialized;
 
-    constructor () {
-        account = new Account();
-    }
+    mapping(address => bool) internal _controllers;
 
-    function clone (
-        address starterOwner,
-        WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
-    )
-        public
-        returns (Account acct)
-    {
-        acct = Account(createClone(address(account)));
-        acct.init(
-            starterOwner,
-            walletType,
-            keypairSecret,
-            title
-        );
-    }
-}
+    Wallet[] internal wallets;
 
-contract Account {
-    bool private _initialized;
-
-    mapping(address => bool) private _controllers;
-
-    Wallet[] private wallets;
-
-    mapping(WalletType => mapping(address => bytes32)) private walletSecret;
+    mapping(address => bytes32) internal walletSecret;
 
     constructor () {
         _initialized = true;
@@ -67,17 +29,16 @@ contract Account {
 
     function init (
         address starterOwner, 
-        WalletType walletType,
         bytes32 keypairSecret,
         string memory title
     )
-        public
+        public virtual
     {
         require( ! _initialized, "AlreadyInitialized" );
 
         _controllers[starterOwner] = true;
 
-        _createWallet(walletType, keypairSecret, title);
+        _createWallet(keypairSecret, title);
 
         _initialized = true;
     }
@@ -96,38 +57,8 @@ contract Account {
         _controllers[who] = status;
     }
 
-    function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
-        public view
-        onlyByController
-        returns (bytes memory)
-    {
-        require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
-
-        return EIP155Signer.sign(
-            wal.keypairAddress, 
-            walletSecret[wal.walletType][wal.keypairAddress], 
-            txToSign
-        );
-    }
-
-    function sign (uint256 walletId, bytes32 digest)
-        public view
-        onlyByController
-        returns (SignatureRSV memory)
-    {
-        require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
-
-        return EthereumUtils.sign(
-            wal.keypairAddress, 
-            walletSecret[wal.walletType][wal.keypairAddress], 
-            digest
-        );
-    }
-
     function getWalletList ()
-        public view 
+        public virtual view 
         onlyByController
         returns (Wallet[] memory) 
     {
@@ -135,7 +66,7 @@ contract Account {
     }
 
     function walletAddress (uint256 walletId)
-        public view 
+        public virtual view 
         onlyByController
         returns (address) 
     {
@@ -144,23 +75,23 @@ contract Account {
     }
 
     function exportPrivateKey (uint256 walletId)
-        public view
+        public virtual view
         onlyByController
         returns (bytes32)
     {
         Wallet memory wal = wallets[walletId];
-        return walletSecret[wal.walletType][wal.keypairAddress];
+        return walletSecret[wal.keypairAddress];
     }
 
     function transfer (address in_target, uint256 amount)
-        public
+        public virtual
         onlyByController
     {
         return payable(in_target).transfer(amount);
     }
 
     function call (address in_contract, bytes calldata in_data)
-        public
+        public virtual
         onlyByController
         returns (bytes memory out_data)
     {
@@ -173,7 +104,7 @@ contract Account {
     }
 
     function staticcall (address in_contract, bytes calldata in_data)
-        public view
+        public virtual view
         onlyByController
         returns (bytes memory out_data)
     {
@@ -186,7 +117,6 @@ contract Account {
     }
 
     function createWallet (
-        WalletType walletType,
         bytes32 keypairSecret,
         string memory title
     )
@@ -194,14 +124,14 @@ contract Account {
         onlyByController
         returns (address) 
     {
-        return _createWallet(walletType, keypairSecret, title);
+        return _createWallet(keypairSecret, title);
     }
 
     function updateTitle (
         uint256 walletId,
         string memory title
     )
-        external
+        external virtual
         onlyByController
     {
         require(walletId < wallets.length, "Invalid wallet id");
@@ -213,51 +143,7 @@ contract Account {
       * PRIVATE FUNCTIONS 
       */
     function _createWallet (
-        WalletType walletType,
         bytes32 keypairSecret,
         string memory title
-    )
-        private
-        returns (address) 
-    {
-        require(wallets.length < 100, "Max 100 wallets per account");
-
-        address keypairAddress;
-
-        if (keypairSecret == bytes32(0)) {
-            (keypairAddress, keypairSecret) = EthereumUtils.generateKeypair();
-
-        } else {
-            // Generate publicKey from privateKey
-            bytes memory keypairSecretB = abi.encodePacked(keypairSecret);
-
-            (bytes memory pk, ) = Sapphire.generateSigningKeyPair(
-                Sapphire.SigningAlg.Secp256k1PrehashedKeccak256,
-                keypairSecretB
-            );
-
-            keypairAddress = EthereumUtils.k256PubkeyToEthereumAddress(pk);
-        }
-
-        require(
-            walletSecret[walletType][keypairAddress] == bytes32(0), 
-            "Wallet already imported"
-        );
-
-        wallets.push(
-            Wallet(
-                walletType,
-                keypairAddress,
-                title
-            )
-        );
-
-        walletSecret[walletType][keypairAddress] = keypairSecret;
-
-        if (walletType == WalletType.EVM) {
-            _controllers[keypairAddress] = true;
-        }
-
-        return keypairAddress;
-    }
+    ) internal virtual returns (address);
 }

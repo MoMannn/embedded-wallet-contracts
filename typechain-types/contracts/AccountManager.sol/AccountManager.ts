@@ -220,7 +220,7 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "getAccount",
-    values: [BytesLike]
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
@@ -260,11 +260,11 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "proxyView",
-    values: [BytesLike, AuthenticatorResponseStruct, BytesLike]
+    values: [BytesLike, AuthenticatorResponseStruct, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "proxyViewPassword",
-    values: [BytesLike, BytesLike, BytesLike]
+    values: [BytesLike, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
@@ -584,7 +584,11 @@ export interface AccountManager extends BaseContract {
     "view"
   >;
 
-  getAccount: TypedContractMethod<[in_username: BytesLike], [string], "view">;
+  getAccount: TypedContractMethod<
+    [in_username: BytesLike, walletType: BigNumberish],
+    [string],
+    "view"
+  >;
 
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
 
@@ -628,6 +632,7 @@ export interface AccountManager extends BaseContract {
     [
       in_credentialIdHashed: BytesLike,
       in_resp: AuthenticatorResponseStruct,
+      walletType: BigNumberish,
       in_data: BytesLike
     ],
     [string],
@@ -635,7 +640,12 @@ export interface AccountManager extends BaseContract {
   >;
 
   proxyViewPassword: TypedContractMethod<
-    [in_hashedUsername: BytesLike, in_digest: BytesLike, in_data: BytesLike],
+    [
+      in_hashedUsername: BytesLike,
+      walletType: BigNumberish,
+      in_digest: BytesLike,
+      in_data: BytesLike
+    ],
     [string],
     "view"
   >;
@@ -735,7 +745,11 @@ export interface AccountManager extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "getAccount"
-  ): TypedContractMethod<[in_username: BytesLike], [string], "view">;
+  ): TypedContractMethod<
+    [in_username: BytesLike, walletType: BigNumberish],
+    [string],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
@@ -781,6 +795,7 @@ export interface AccountManager extends BaseContract {
     [
       in_credentialIdHashed: BytesLike,
       in_resp: AuthenticatorResponseStruct,
+      walletType: BigNumberish,
       in_data: BytesLike
     ],
     [string],
@@ -789,7 +804,12 @@ export interface AccountManager extends BaseContract {
   getFunction(
     nameOrSignature: "proxyViewPassword"
   ): TypedContractMethod<
-    [in_hashedUsername: BytesLike, in_digest: BytesLike, in_data: BytesLike],
+    [
+      in_hashedUsername: BytesLike,
+      walletType: BigNumberish,
+      in_digest: BytesLike,
+      in_data: BytesLike
+    ],
     [string],
     "view"
   >;

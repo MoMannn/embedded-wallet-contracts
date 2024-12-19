@@ -35,7 +35,7 @@ const _abi = [
     name: "clone",
     outputs: [
       {
-        internalType: "contract Account",
+        internalType: "address",
         name: "acct",
         type: "address",
       },

@@ -12,7 +12,8 @@ import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol
 import {EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
 
-import {Account,WalletType,Wallet} from "./Account.sol";
+import {Wallet} from "./Account.sol";
+import {WalletType} from "./AccountFactory.sol";
 import {WebAuthN,CosePublicKey,AuthenticatorResponse} from "./lib/WebAuthN.sol";
 
 interface IAccountFactory {
@@ -21,7 +22,14 @@ interface IAccountFactory {
         WalletType walletType,
         bytes32 keypairSecret,
         string memory title
-    ) external returns (Account acct);
+    ) external returns (address acct);
+}
+
+interface IAccount {
+    function createWallet (
+        bytes32 keypairSecret,
+        string memory title
+    ) external returns (address);
 }
 
 struct UserCredential {
@@ -33,7 +41,7 @@ struct UserCredential {
 struct User {
     bytes32 username;
     bytes32 password;
-    Account account;
+    IAccount[5] accounts; // 0=EVM, 1=SUBSTRATE, 2=BITCOIN, 3=TBD, 4=TBD, 5=TBD
 }
 
 struct GaslessData {
@@ -193,11 +201,11 @@ contract AccountManager is AccountManagerStorage,
      *
      * @param in_username hashed username
      */
-    function getAccount (bytes32 in_username)
+    function getAccount (bytes32 in_username, WalletType walletType)
         external view
         returns (address)
     {
-        return address(users[in_username].account);
+        return address(users[in_username].accounts[uint256(walletType)]);
     }
 
     /**
@@ -249,7 +257,21 @@ contract AccountManager is AccountManagerStorage,
 
         WalletData memory wallet = abi.decode(args.data, (WalletData));
 
-        user.account.createWallet(wallet.walletType, wallet.keypairSecret, wallet.title);
+        IAccount account = user.accounts[uint256(wallet.walletType)];
+
+        if (address(account) == address(0)) {
+            // Setup account for new walletType
+            internal_createAccount(
+                user.username, 
+                bytes32(0), // skip password 
+                wallet.walletType,
+                wallet.keypairSecret,
+                wallet.title
+            );
+        } else {
+            // Add wallet to an existing account
+            account.createWallet(wallet.keypairSecret, wallet.title);
+        }
     }
 
     /**
@@ -272,7 +294,21 @@ contract AccountManager is AccountManagerStorage,
             "digest verification failed"
         );
 
-        user.account.createWallet(wallet.walletType, wallet.keypairSecret, wallet.title);
+        IAccount account = user.accounts[uint256(wallet.walletType)];
+
+        if (address(account) == address(0)) {
+            // Setup account for new walletType
+            internal_createAccount(
+                user.username, 
+                bytes32(0), // skip password 
+                wallet.walletType,
+                wallet.keypairSecret,
+                wallet.title
+            );
+        } else {
+            // Add wallet to an existing account
+            account.createWallet(wallet.keypairSecret, wallet.title);
+        }
     }
 
     /**
@@ -448,13 +484,25 @@ contract AccountManager is AccountManagerStorage,
     {
         user = users[in_hashedUsername];
         user.username = in_hashedUsername;
-        user.account = accountFactory.clone(
-            address(this), 
-            walletType,
-            keypairSecret,
-            title
+
+        // Set password only first time
+        if (user.password == bytes32(0)) {
+            user.password = in_optionalPassword;
+        }
+
+        require(
+            address(user.accounts[uint256(walletType)]) == address(0), 
+            "Account for wallet type already exists"
         );
-        user.password = in_optionalPassword;
+
+        user.accounts[uint256(walletType)] = IAccount(
+            accountFactory.clone(
+                address(this), 
+                walletType,
+                keypairSecret,
+                title
+            )
+        );
     }
 
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
@@ -494,11 +542,13 @@ contract AccountManager is AccountManagerStorage,
      * @dev Performs a proxied call to the users account
      *
      * @param user executor account
+     * @param walletType wallet type to select account address
      * @param in_data calldata to pass to account proxy
      * @return out_data result from proxied view call
      */
     function internal_proxyView(
         User storage user,
+        WalletType walletType,
         bytes calldata in_data
     )
         internal view
@@ -506,7 +556,7 @@ contract AccountManager is AccountManagerStorage,
     {
         bool success;
 
-        (success, out_data) = address(user.account).staticcall(in_data);
+        (success, out_data) = address(user.accounts[uint256(walletType)]).staticcall(in_data);
 
         assembly {
             switch success
@@ -524,6 +574,7 @@ contract AccountManager is AccountManagerStorage,
      */
     function proxyViewPassword(
         bytes32 in_hashedUsername,
+        WalletType walletType,
         bytes32 in_digest,
         bytes calldata in_data
     )
@@ -545,7 +596,7 @@ contract AccountManager is AccountManagerStorage,
             "in_digest VF"
         );
 
-        return internal_proxyView(user, in_data);
+        return internal_proxyView(user, walletType, in_data);
     }
 
     /**
@@ -559,6 +610,7 @@ contract AccountManager is AccountManagerStorage,
     function proxyView(
         bytes32 in_credentialIdHashed,
         AuthenticatorResponse calldata in_resp,
+        WalletType walletType,
         bytes calldata in_data
     )
         external view
@@ -568,7 +620,7 @@ contract AccountManager is AccountManagerStorage,
 
         User storage user = internal_verifyCredential(in_credentialIdHashed, challenge, in_resp);
 
-        return internal_proxyView(user, in_data);
+        return internal_proxyView(user, walletType, in_data);
     }
 
     /**
@@ -637,7 +689,7 @@ contract AccountManager is AccountManagerStorage,
             revert("Unsupported operation");
         }
 
-        emit GaslessTransaction(dataHash, user.username, address(user.account));
+        emit GaslessTransaction(dataHash, user.username, address(user.accounts[0])); // EVM account
     }
 
     /**

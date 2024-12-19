@@ -10,7 +10,7 @@ const ACCOUNT_ABI = [
   'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
   'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
   'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
-  'function getWalletList() view returns ((uint8 walletType, address keypairAddress, string title)[])',
+  'function getWalletList() view returns ((address keypairAddress, string title)[])',
   'function walletAddress (uint256 walletId) view returns (address)',
   'function updateTitle(uint256 walletId,string title)',
 ];
@@ -93,7 +93,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [sigRes] = iface.decodeFunctionResult('sign', resp).toArray();
@@ -117,7 +117,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
@@ -175,7 +175,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
@@ -226,7 +226,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.1"), // Sends exactly 0.1 ether
     });
 
-    const accountAddress = await WA.getAccount(username);
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
     const iface = new ethers.Interface(ACCOUNT_ABI);
     const in_inner_data = iface.encodeFunctionData('updateTitle', [WALLET_IDX_1, "Updated wallet"]);;
@@ -250,7 +250,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
@@ -355,11 +355,16 @@ describe("AccountManager", function() {
         x: keyPair.decoded_x,
         y: keyPair.decoded_y,
       },
-      optionalPassword: SIMPLE_PASSWORD
+      optionalPassword: SIMPLE_PASSWORD,
+      wallet: {
+        walletType: WALLET_TYPE_EVM,
+        keypairSecret: BYTES32_ZERO, // create new wallet
+        title: "Default wallet",
+      }
     };
 
     let funcData = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, bytes32 optionalPassword)" ], 
+      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, bytes32 optionalPassword, tuple(uint256 walletType, bytes32 keypairSecret, string title) wallet)" ], 
       [ registerData ]
     ); 
 
@@ -430,7 +435,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
@@ -1262,7 +1267,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [publicKey] = iface.decodeFunctionResult('walletAddress', resp).toArray();
@@ -1324,7 +1329,7 @@ describe("AccountManager", function() {
     }
 
     const resp = await WA.proxyView(
-      credentialIdHashed, in_resp, in_data
+      credentialIdHashed, in_resp, WALLET_TYPE_EVM, in_data
     );
 
     const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
@@ -1371,7 +1376,7 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, in_digest, in_data
+      username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
     const [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
