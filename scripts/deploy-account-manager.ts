@@ -6,8 +6,19 @@ async function main() {
   await curveLibrary.waitForDeployment();
 
   const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-  const accountFactory = await accountFactoryFactory.deploy();
-  await accountFactory.waitForDeployment();
+  const accountFactoryProxyFactory = await hre.ethers.getContractFactory("AccountFactoryProxy");
+  const accountFactoryImpl = await accountFactoryFactory.deploy();
+  await accountFactoryImpl.waitForDeployment();
+
+  const AFProxy = await accountFactoryProxyFactory.deploy(
+    await accountFactoryImpl.getAddress(),
+    accountFactoryFactory.interface.encodeFunctionData('initialize', []),
+  );
+  await AFProxy.waitForDeployment();
+
+  // const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
+  // const accountFactory = await accountFactoryFactory.deploy();
+  // await accountFactory.waitForDeployment();
 
   const contractFactory = await hre.ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: await curveLibrary.getAddress()}});
   const proxyFactory = await hre.ethers.getContractFactory('AccountManagerProxy');
@@ -18,7 +29,7 @@ async function main() {
     await impl.getAddress(),
     contractFactory.interface.encodeFunctionData(
       'initialize', [
-        await accountFactory.getAddress(), // accountFactory
+        await AFProxy.getAddress(), // accountFactory
         '0x03f039b54373591B39d9524A5baA4dAa25A0B4E4' // signer
       ]
     ),

@@ -53,8 +53,19 @@ describe("AccountManager", function() {
     await curveLibrary.waitForDeployment();
 
     const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-    const accountFactory = await accountFactoryFactory.deploy();
-    await accountFactory.waitForDeployment();
+    const accountFactoryProxyFactory = await hre.ethers.getContractFactory("AccountFactoryProxy");
+    const accountFactoryImpl = await accountFactoryFactory.deploy();
+    await accountFactoryImpl.waitForDeployment();
+
+    const AFProxy = await accountFactoryProxyFactory.deploy(
+      await accountFactoryImpl.getAddress(),
+      accountFactoryFactory.interface.encodeFunctionData('initialize', []),
+    );
+    await AFProxy.waitForDeployment();
+
+    // const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
+    // const accountFactory = await accountFactoryFactory.deploy();
+    // await accountFactory.waitForDeployment();
 
     const contractFactory = await ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: await curveLibrary.getAddress()}});
     const proxyFactory = await ethers.getContractFactory('AccountManagerProxy');

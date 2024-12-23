@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {CloneFactory} from "./lib/CloneFactory.sol";
 import {AccountEVM} from "./AccountEVM.sol";
 
@@ -11,12 +15,27 @@ enum WalletType {
     BITCOIN
 }
 
-contract AccountFactory is CloneFactory {
+contract AccountFactory is CloneFactory,
+    Initializable,
+    UUPSUpgradeable,
+    AccessControlUpgradeable
+{
     AccountEVM private accountEVM;
 
-    constructor () {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor()  {
+        _disableInitializers();
+    }
+
+    // Initializer instead of constructor
+    function initialize() public payable initializer {
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+
         accountEVM = new AccountEVM();
     }
+
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     function clone (
         address starterOwner,

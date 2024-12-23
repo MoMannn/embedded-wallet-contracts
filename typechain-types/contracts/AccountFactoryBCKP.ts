@@ -23,7 +23,7 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export interface AccountFactoryInterface extends Interface {
+export interface AccountFactoryBCKPInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
@@ -215,11 +215,11 @@ export namespace UpgradedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export interface AccountFactory extends BaseContract {
-  connect(runner?: ContractRunner | null): AccountFactory;
+export interface AccountFactoryBCKP extends BaseContract {
+  connect(runner?: ContractRunner | null): AccountFactoryBCKP;
   waitForDeployment(): Promise<this>;
 
-  interface: AccountFactoryInterface;
+  interface: AccountFactoryBCKPInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
