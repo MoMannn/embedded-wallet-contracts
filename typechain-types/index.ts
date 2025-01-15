@@ -50,8 +50,6 @@ export type { AccountEVM } from "./contracts/AccountEVM";
 export { AccountEVM__factory } from "./factories/contracts/AccountEVM__factory";
 export type { AccountFactory } from "./contracts/AccountFactory";
 export { AccountFactory__factory } from "./factories/contracts/AccountFactory__factory";
-export type { AccountFactoryBCKP } from "./contracts/AccountFactoryBCKP";
-export { AccountFactoryBCKP__factory } from "./factories/contracts/AccountFactoryBCKP__factory";
 export type { AccountManager } from "./contracts/AccountManager.sol/AccountManager";
 export { AccountManager__factory } from "./factories/contracts/AccountManager.sol/AccountManager__factory";
 export type { AccountManagerStorage } from "./contracts/AccountManager.sol/AccountManagerStorage";

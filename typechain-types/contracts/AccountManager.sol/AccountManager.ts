@@ -163,6 +163,8 @@ export interface AccountManagerInterface extends Interface {
       | "upgradeToAndCall"
       | "userExists"
       | "validateSignature"
+      | "walletUpdateTitle"
+      | "walletUpdateTitlePassword"
   ): FunctionFragment;
 
   getEvent(
@@ -296,6 +298,14 @@ export interface AccountManagerInterface extends Interface {
     functionFragment: "validateSignature",
     values: [BigNumberish, BigNumberish, BigNumberish, BytesLike, BytesLike]
   ): string;
+  encodeFunctionData(
+    functionFragment: "walletUpdateTitle",
+    values: [ActionCredStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "walletUpdateTitlePassword",
+    values: [ActionPassStruct]
+  ): string;
 
   decodeFunctionResult(
     functionFragment: "DEFAULT_ADMIN_ROLE",
@@ -379,6 +389,14 @@ export interface AccountManagerInterface extends Interface {
   decodeFunctionResult(functionFragment: "userExists", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "validateSignature",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "walletUpdateTitle",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "walletUpdateTitlePassword",
     data: BytesLike
   ): Result;
 }
@@ -692,6 +710,18 @@ export interface AccountManager extends BaseContract {
     "view"
   >;
 
+  walletUpdateTitle: TypedContractMethod<
+    [args: ActionCredStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  walletUpdateTitlePassword: TypedContractMethod<
+    [args: ActionPassStruct],
+    [void],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -862,6 +892,12 @@ export interface AccountManager extends BaseContract {
     [[string, boolean]],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "walletUpdateTitle"
+  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "walletUpdateTitlePassword"
+  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
 
   getEvent(
     key: "GaslessTransaction"

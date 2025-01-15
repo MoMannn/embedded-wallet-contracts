@@ -8,4 +8,3 @@ export * as test from "./test";
 export { Account__factory } from "./Account__factory";
 export { AccountEVM__factory } from "./AccountEVM__factory";
 export { AccountFactory__factory } from "./AccountFactory__factory";
-export { AccountFactoryBCKP__factory } from "./AccountFactoryBCKP__factory";

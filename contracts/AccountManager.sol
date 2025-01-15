@@ -30,6 +30,11 @@ interface IAccount {
         bytes32 keypairSecret,
         string memory title
     ) external returns (address);
+
+    function updateTitle (
+        uint256 walletId,
+        string memory title
+    ) external;
 }
 
 struct UserCredential {
@@ -54,7 +59,9 @@ enum TxType {
     ManageCredential,
     ManageCredentialPassword,
     AddWallet,
-    AddWalletPassword
+    AddWalletPassword,
+    UpdateTitle,
+    UpdateTitlePassword
 }
 
 enum CredentialAction {
@@ -217,9 +224,7 @@ contract AccountManager is AccountManagerStorage,
         public view
         returns (bool)
     {
-        User storage user = users[in_username];
-
-        return user.username != bytes32(0x0);
+        return users[in_username].username != bytes32(0x0);
     }
 
     /**
@@ -253,25 +258,9 @@ contract AccountManager is AccountManagerStorage,
         public 
     {
         bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
-        User storage user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
+        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
 
-        WalletData memory wallet = abi.decode(args.data, (WalletData));
-
-        IAccount account = user.accounts[uint256(wallet.walletType)];
-
-        if (address(account) == address(0)) {
-            // Setup account for new walletType
-            internal_createAccount(
-                user.username, 
-                bytes32(0), // skip password 
-                wallet.walletType,
-                wallet.keypairSecret,
-                wallet.title
-            );
-        } else {
-            // Add wallet to an existing account
-            account.createWallet(wallet.keypairSecret, wallet.title);
-        }
+        internal_addWallet(user, args.data);
     }
 
     /**
@@ -282,33 +271,13 @@ contract AccountManager is AccountManagerStorage,
     function addWalletPassword (ActionPass memory args) 
         public 
     {
-        WalletData memory wallet = abi.decode(args.data, (WalletData));
-
-        User storage user = users[args.hashedUsername];
-        require(user.username != bytes32(0), "Invalid username");
-        require(user.password != bytes32(0), "Invalid password");
-
-        // Verify data
-        require(
-            keccak256(abi.encodePacked(user.password, args.data)) == args.digest,
-            "digest verification failed"
+        User memory user = internal_verifyPassword(
+            args.hashedUsername, 
+            args.digest, 
+            args.data
         );
 
-        IAccount account = user.accounts[uint256(wallet.walletType)];
-
-        if (address(account) == address(0)) {
-            // Setup account for new walletType
-            internal_createAccount(
-                user.username, 
-                bytes32(0), // skip password 
-                wallet.walletType,
-                wallet.keypairSecret,
-                wallet.title
-            );
-        } else {
-            // Add wallet to an existing account
-            account.createWallet(wallet.keypairSecret, wallet.title);
-        }
+        internal_addWallet(user, args.data);
     }
 
     /**
@@ -320,18 +289,9 @@ contract AccountManager is AccountManagerStorage,
         public 
     {
         bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
-        User storage user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
+        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
 
-        Credential memory credential = abi.decode(args.data, (Credential));
-
-        // Perform credential action
-        if (credential.action == CredentialAction.Add) {
-            internal_addCredential(user.username, credential.credentialId, credential.pubkey);
-        } else if (credential.action == CredentialAction.Remove) {
-            internal_removeCredential(user.username, credential.credentialId);
-        } else  {
-            revert("Unsupported operation");
-        }
+        internal_manageCredential(user, args.data);
     }
 
     /**
@@ -342,26 +302,44 @@ contract AccountManager is AccountManagerStorage,
     function manageCredentialPassword (ActionPass memory args) 
         public 
     {
-        Credential memory credential = abi.decode(args.data, (Credential));
-
-        User storage user = users[args.hashedUsername];
-        require(user.username != bytes32(0), "Invalid username");
-        require(user.password != bytes32(0), "Invalid password");
-
-        // Verify data
-        require(
-            keccak256(abi.encodePacked(user.password, args.data)) == args.digest,
-            "digest verification failed"
+        User memory user = internal_verifyPassword(
+            args.hashedUsername, 
+            args.digest, 
+            args.data
         );
 
-        // Perform credential action
-        if (credential.action == CredentialAction.Add) {
-            internal_addCredential(user.username, credential.credentialId, credential.pubkey);
-        } else if (credential.action == CredentialAction.Remove) {
-            internal_removeCredential(user.username, credential.credentialId);
-        } else  {
-            revert("Unsupported operation");
-        }
+        internal_manageCredential(user, args.data);
+    }
+
+    /**
+     * @dev Update wallet title with credential
+     *
+     * @param args credential data
+     */
+    function walletUpdateTitle (ActionCred memory args) 
+        public 
+    {
+        bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
+        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
+
+        internal_walletUpdateTitle(user, args.data);
+    }
+
+    /**
+     * @dev Update wallet title with password
+     *
+     * @param args credential data
+     */
+    function walletUpdateTitlePassword (ActionPass memory args) 
+        public 
+    {
+        User memory user = internal_verifyPassword(
+            args.hashedUsername, 
+            args.digest, 
+            args.data
+        );
+
+        internal_walletUpdateTitle(user, args.data);
     }
 
     /**
@@ -375,7 +353,7 @@ contract AccountManager is AccountManagerStorage,
     {
         require(userExists(in_hashedUsername), "credentialIdsByUsername");
 
-        bytes32[] storage credentialIdHashes = usernameToHashedCredentialIdList[in_hashedUsername];
+        bytes32[] memory credentialIdHashes = usernameToHashedCredentialIdList[in_hashedUsername];
 
         uint length = credentialIdHashes.length;
 
@@ -383,9 +361,25 @@ contract AccountManager is AccountManagerStorage,
 
         for( uint i = 0; i < length; i++ )
         {
-            UserCredential storage cred = credentialsByHashedCredentialId[credentialIdHashes[i]];
+            UserCredential memory cred = credentialsByHashedCredentialId[credentialIdHashes[i]];
 
             out_credentialIds[i] = cred.credentialId;
+        }
+    }
+
+    function internal_manageCredential(
+        User memory user, 
+        bytes memory data
+    ) internal {
+        Credential memory credential = abi.decode(data, (Credential));
+
+        // Perform credential action
+        if (credential.action == CredentialAction.Add) {
+            internal_addCredential(user.username, credential.credentialId, credential.pubkey);
+        } else if (credential.action == CredentialAction.Remove) {
+            internal_removeCredential(user.username, credential.credentialId);
+        } else  {
+            revert("Unsupported operation");
         }
     }
 
@@ -505,6 +499,48 @@ contract AccountManager is AccountManagerStorage,
         );
     }
 
+    function internal_addWallet (
+        User memory user, 
+        bytes memory data
+    ) internal {
+        WalletData memory wallet = abi.decode(data, (WalletData));
+
+        IAccount account = user.accounts[uint256(wallet.walletType)];
+
+        if (address(account) == address(0)) {
+            // Setup account for new walletType
+            internal_createAccount(
+                user.username, 
+                bytes32(0), // skip password 
+                wallet.walletType,
+                wallet.keypairSecret,
+                wallet.title
+            );
+        } else {
+            // Add wallet to an existing account
+            account.createWallet(wallet.keypairSecret, wallet.title);
+        }
+    }
+
+    function internal_walletUpdateTitle(
+        User memory user,
+        bytes memory data
+    ) internal {
+        (
+            uint256 walletType, 
+            uint256 walletId,
+            string memory title
+        ) = abi.decode(data, (uint256, uint256, string));
+
+        IAccount account = user.accounts[walletType];
+        require(
+            address(account) != address(0), 
+            "Account for this walletType not initialized"
+        );
+
+        account.updateTitle(walletId, title);
+    }
+
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
         internal view
         returns (
@@ -526,7 +562,7 @@ contract AccountManager is AccountManagerStorage,
         internal view
         returns (User storage user)
     {
-        UserCredential storage credential;
+        UserCredential memory credential;
 
         (user, credential) = internal_getCredentialAndUser(in_credentialIdHashed);
 
@@ -536,6 +572,25 @@ contract AccountManager is AccountManagerStorage,
         );
 
         return user;
+    }
+
+    function internal_verifyPassword (
+        bytes32 hashedUsername,
+        bytes32 digest,
+        bytes memory data
+    ) 
+        internal view 
+        returns (User storage user) 
+    {
+        user = users[hashedUsername];
+        require(user.username != bytes32(0), "Invalid username");
+        require(user.password != bytes32(0), "Invalid password");
+
+        // Verify data
+        require(
+            keccak256(abi.encodePacked(user.password, data)) == digest,
+            "digest verification failed"
+        );
     }
 
     /**
@@ -581,19 +636,10 @@ contract AccountManager is AccountManagerStorage,
         external view
         returns (bytes memory out_data)
     {
-        User storage user = users[in_hashedUsername];
-
-        require( 
-            user.username != bytes32(0),
-            "IU"
-        );
-        require(
-            user.password != bytes32(0),
-            "IP"    
-        );
-        require(
-            keccak256(abi.encodePacked(user.password, in_data)) == in_digest,
-            "in_digest VF"
+        User storage user = internal_verifyPassword(
+            in_hashedUsername, 
+            in_digest, 
+            in_data
         );
 
         return internal_proxyView(user, walletType, in_data);
@@ -657,7 +703,8 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredential) || 
-            gaslessArgs.txType == uint8(TxType.AddWallet)
+            gaslessArgs.txType == uint8(TxType.AddWallet) ||
+            gaslessArgs.txType == uint8(TxType.UpdateTitle)
         ) {
             ActionCred memory args = abi.decode(gaslessArgs.funcData, (ActionCred));
 
@@ -665,6 +712,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredential(args);
             } else if (gaslessArgs.txType == uint8(TxType.AddWallet)) {
                 addWallet(args);
+            } else if (gaslessArgs.txType == uint8(TxType.UpdateTitle)) {
+                walletUpdateTitle(args);
             }
             
             // Get user for emit event
@@ -672,7 +721,8 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredentialPassword) ||
-            gaslessArgs.txType == uint8(TxType.AddWalletPassword)
+            gaslessArgs.txType == uint8(TxType.AddWalletPassword) ||
+            gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)
         ) {
             ActionPass memory args = abi.decode(gaslessArgs.funcData, (ActionPass));
 
@@ -680,6 +730,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredentialPassword(args);
             } else if(gaslessArgs.txType == uint8(TxType.AddWalletPassword)) { 
                 addWalletPassword(args);
+            } else if(gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)) { 
+                walletUpdateTitlePassword(args);
             }
 
             // Get user for emit event
