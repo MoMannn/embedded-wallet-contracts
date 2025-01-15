@@ -74,7 +74,7 @@ describe("AccountManager", function() {
     await impl.waitForDeployment();
     const WAProxy = await proxyFactory.deploy(
       await impl.getAddress(),
-      contractFactory.interface.encodeFunctionData('initialize', [await accountFactory.getAddress(), signer.address]),
+      contractFactory.interface.encodeFunctionData('initialize', [await AFProxy.getAddress(), signer.address]),
     );
     await WAProxy.waitForDeployment();
 
