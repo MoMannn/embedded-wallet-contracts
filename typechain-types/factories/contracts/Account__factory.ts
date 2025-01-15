@@ -3,10 +3,7 @@
 /* eslint-disable */
 
 import { Contract, Interface, type ContractRunner } from "ethers";
-import type {
-  Account,
-  AccountInterface,
-} from "../../../contracts/Account.sol/Account";
+import type { Account, AccountInterface } from "../../contracts/Account";
 
 const _abi = [
   {

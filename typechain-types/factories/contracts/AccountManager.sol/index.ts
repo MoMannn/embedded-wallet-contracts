@@ -3,4 +3,5 @@
 /* eslint-disable */
 export { AccountManager__factory } from "./AccountManager__factory";
 export { AccountManagerStorage__factory } from "./AccountManagerStorage__factory";
+export { IAccount__factory } from "./IAccount__factory";
 export { IAccountFactory__factory } from "./IAccountFactory__factory";

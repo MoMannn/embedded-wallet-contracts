@@ -2,34 +2,19 @@
 
 pragma solidity ^0.8.0;
 
-import {SignatureRSV, EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
-import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
-import {CloneFactory} from "./lib/CloneFactory.sol";
-
-contract AccountFactory is CloneFactory {
-    Account private account;
-
-    constructor () {
-        account = new Account();
-    }
-
-    function clone (address starterOwner)
-        public
-        returns (Account acct)
-    {
-        acct = Account(createClone(address(account)));
-        acct.init(starterOwner);
-    }
+struct Wallet {
+    address keypairAddress;
+    string title;
 }
 
-contract Account {
-    bool private _initialized;
+abstract contract Account {
+    bool internal _initialized;
 
-    mapping(address => bool) private _controllers;
+    mapping(address => bool) internal _controllers;
 
-    address public keypairAddress;
+    Wallet[] internal wallets;
 
-    bytes32 private keypairSecret;
+    mapping(address => bytes32) internal walletSecret;
 
     constructor () {
         _initialized = true;
@@ -42,16 +27,18 @@ contract Account {
         return _controllers[who];
     }
 
-    function init (address starterOwner)
-        public
+    function init (
+        address starterOwner, 
+        bytes32 keypairSecret,
+        string memory title
+    )
+        public virtual
     {
         require( ! _initialized, "AlreadyInitialized" );
 
         _controllers[starterOwner] = true;
 
-        (keypairAddress, keypairSecret) = EthereumUtils.generateKeypair();
-
-        _controllers[keypairAddress] = true;
+        _createWallet(keypairSecret, title);
 
         _initialized = true;
     }
@@ -70,39 +57,41 @@ contract Account {
         _controllers[who] = status;
     }
 
-    function signEIP155 (EIP155Signer.EthTx calldata txToSign)
-        public view
+    function getWalletList ()
+        public virtual view 
         onlyByController
-        returns (bytes memory)
+        returns (Wallet[] memory) 
     {
-        return EIP155Signer.sign(keypairAddress, keypairSecret, txToSign);
+        return wallets;
     }
 
-    function sign (bytes32 digest)
-        public view
+    function walletAddress (uint256 walletId)
+        public virtual view 
         onlyByController
-        returns (SignatureRSV memory)
+        returns (address) 
     {
-        return EthereumUtils.sign(keypairAddress, keypairSecret, digest);
+        require(walletId < wallets.length, "Invalid wallet id");
+        return wallets[walletId].keypairAddress;
     }
 
-    function exportPrivateKey ()
-        public view
+    function exportPrivateKey (uint256 walletId)
+        public virtual view
         onlyByController
         returns (bytes32)
     {
-        return keypairSecret;
+        Wallet memory wal = wallets[walletId];
+        return walletSecret[wal.keypairAddress];
     }
 
     function transfer (address in_target, uint256 amount)
-        public
+        public virtual
         onlyByController
     {
         return payable(in_target).transfer(amount);
     }
 
     function call (address in_contract, bytes calldata in_data)
-        public
+        public virtual
         onlyByController
         returns (bytes memory out_data)
     {
@@ -115,7 +104,7 @@ contract Account {
     }
 
     function staticcall (address in_contract, bytes calldata in_data)
-        public view
+        public virtual view
         onlyByController
         returns (bytes memory out_data)
     {
@@ -126,4 +115,35 @@ contract Account {
             case 0 { revert(add(out_data,32),mload(out_data)) }
         }
     }
+
+    function createWallet (
+        bytes32 keypairSecret,
+        string memory title
+    )
+        external
+        onlyByController
+        returns (address) 
+    {
+        return _createWallet(keypairSecret, title);
+    }
+
+    function updateTitle (
+        uint256 walletId,
+        string memory title
+    )
+        external virtual
+        onlyByController
+    {
+        require(walletId < wallets.length, "Invalid wallet id");
+        require(bytes(title).length > 0, "Title cannot be empty");
+        wallets[walletId].title = title;
+    }
+
+    /**
+      * PRIVATE FUNCTIONS 
+      */
+    function _createWallet (
+        bytes32 keypairSecret,
+        string memory title
+    ) internal virtual returns (address);
 }

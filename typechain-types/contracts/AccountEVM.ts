@@ -19,7 +19,7 @@ import type {
   TypedEventLog,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../common";
 
 export type WalletStruct = { keypairAddress: AddressLike; title: string };
 
@@ -28,7 +28,49 @@ export type WalletStructOutput = [keypairAddress: string, title: string] & {
   title: string;
 };
 
-export interface AccountInterface extends Interface {
+export type SignatureRSVStruct = {
+  r: BytesLike;
+  s: BytesLike;
+  v: BigNumberish;
+};
+
+export type SignatureRSVStructOutput = [r: string, s: string, v: bigint] & {
+  r: string;
+  s: string;
+  v: bigint;
+};
+
+export declare namespace EIP155Signer {
+  export type EthTxStruct = {
+    nonce: BigNumberish;
+    gasPrice: BigNumberish;
+    gasLimit: BigNumberish;
+    to: AddressLike;
+    value: BigNumberish;
+    data: BytesLike;
+    chainId: BigNumberish;
+  };
+
+  export type EthTxStructOutput = [
+    nonce: bigint,
+    gasPrice: bigint,
+    gasLimit: bigint,
+    to: string,
+    value: bigint,
+    data: string,
+    chainId: bigint
+  ] & {
+    nonce: bigint;
+    gasPrice: bigint;
+    gasLimit: bigint;
+    to: string;
+    value: bigint;
+    data: string;
+    chainId: bigint;
+  };
+}
+
+export interface AccountEVMInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "call"
@@ -38,6 +80,8 @@ export interface AccountInterface extends Interface {
       | "init"
       | "isController"
       | "modifyController"
+      | "sign"
+      | "signEIP155"
       | "staticcall"
       | "transfer"
       | "updateTitle"
@@ -71,6 +115,14 @@ export interface AccountInterface extends Interface {
   encodeFunctionData(
     functionFragment: "modifyController",
     values: [AddressLike, boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "sign",
+    values: [BigNumberish, BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "signEIP155",
+    values: [BigNumberish, EIP155Signer.EthTxStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "staticcall",
@@ -111,6 +163,8 @@ export interface AccountInterface extends Interface {
     functionFragment: "modifyController",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "sign", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "signEIP155", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
@@ -123,11 +177,11 @@ export interface AccountInterface extends Interface {
   ): Result;
 }
 
-export interface Account extends BaseContract {
-  connect(runner?: ContractRunner | null): Account;
+export interface AccountEVM extends BaseContract {
+  connect(runner?: ContractRunner | null): AccountEVM;
   waitForDeployment(): Promise<this>;
 
-  interface: AccountInterface;
+  interface: AccountEVMInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -200,6 +254,18 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  sign: TypedContractMethod<
+    [walletId: BigNumberish, digest: BytesLike],
+    [SignatureRSVStructOutput],
+    "view"
+  >;
+
+  signEIP155: TypedContractMethod<
+    [walletId: BigNumberish, txToSign: EIP155Signer.EthTxStruct],
+    [string],
+    "view"
+  >;
+
   staticcall: TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
     [string],
@@ -264,6 +330,20 @@ export interface Account extends BaseContract {
     [who: AddressLike, status: boolean],
     [void],
     "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "sign"
+  ): TypedContractMethod<
+    [walletId: BigNumberish, digest: BytesLike],
+    [SignatureRSVStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "signEIP155"
+  ): TypedContractMethod<
+    [walletId: BigNumberish, txToSign: EIP155Signer.EthTxStruct],
+    [string],
+    "view"
   >;
   getFunction(
     nameOrSignature: "staticcall"

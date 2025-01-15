@@ -23,22 +23,6 @@ import type {
   TypedContractMethod,
 } from "../../common";
 
-export type CosePublicKeyStruct = {
-  kty: BigNumberish;
-  alg: BigNumberish;
-  crv: BigNumberish;
-  x: BigNumberish;
-  y: BigNumberish;
-};
-
-export type CosePublicKeyStructOutput = [
-  kty: bigint,
-  alg: bigint,
-  crv: bigint,
-  x: bigint,
-  y: bigint
-] & { kty: bigint; alg: bigint; crv: bigint; x: bigint; y: bigint };
-
 export type AuthenticatorResponseStruct = {
   authenticatorData: BytesLike;
   clientDataTokens: MakeJSON.KeyValueStruct[];
@@ -58,49 +42,83 @@ export type AuthenticatorResponseStructOutput = [
   sigS: bigint;
 };
 
-export declare namespace AccountManager {
-  export type NewAccountStruct = {
-    hashedUsername: BytesLike;
-    credentialId: BytesLike;
-    pubkey: CosePublicKeyStruct;
-    optionalPassword: BytesLike;
-  };
+export type ActionCredStruct = {
+  credentialIdHashed: BytesLike;
+  resp: AuthenticatorResponseStruct;
+  data: BytesLike;
+};
 
-  export type NewAccountStructOutput = [
-    hashedUsername: string,
-    credentialId: string,
-    pubkey: CosePublicKeyStructOutput,
-    optionalPassword: string
-  ] & {
-    hashedUsername: string;
-    credentialId: string;
-    pubkey: CosePublicKeyStructOutput;
-    optionalPassword: string;
-  };
+export type ActionCredStructOutput = [
+  credentialIdHashed: string,
+  resp: AuthenticatorResponseStructOutput,
+  data: string
+] & {
+  credentialIdHashed: string;
+  resp: AuthenticatorResponseStructOutput;
+  data: string;
+};
 
-  export type ManageCredStruct = {
-    credentialIdHashed: BytesLike;
-    resp: AuthenticatorResponseStruct;
-    data: BytesLike;
-  };
+export type ActionPassStruct = {
+  hashedUsername: BytesLike;
+  digest: BytesLike;
+  data: BytesLike;
+};
 
-  export type ManageCredStructOutput = [
-    credentialIdHashed: string,
-    resp: AuthenticatorResponseStructOutput,
-    data: string
-  ] & {
-    credentialIdHashed: string;
-    resp: AuthenticatorResponseStructOutput;
-    data: string;
-  };
+export type ActionPassStructOutput = [
+  hashedUsername: string,
+  digest: string,
+  data: string
+] & { hashedUsername: string; digest: string; data: string };
 
-  export type ManageCredPassStruct = { digest: BytesLike; data: BytesLike };
+export type CosePublicKeyStruct = {
+  kty: BigNumberish;
+  alg: BigNumberish;
+  crv: BigNumberish;
+  x: BigNumberish;
+  y: BigNumberish;
+};
 
-  export type ManageCredPassStructOutput = [digest: string, data: string] & {
-    digest: string;
-    data: string;
-  };
-}
+export type CosePublicKeyStructOutput = [
+  kty: bigint,
+  alg: bigint,
+  crv: bigint,
+  x: bigint,
+  y: bigint
+] & { kty: bigint; alg: bigint; crv: bigint; x: bigint; y: bigint };
+
+export type WalletDataStruct = {
+  walletType: BigNumberish;
+  keypairSecret: BytesLike;
+  title: string;
+};
+
+export type WalletDataStructOutput = [
+  walletType: bigint,
+  keypairSecret: string,
+  title: string
+] & { walletType: bigint; keypairSecret: string; title: string };
+
+export type NewAccountStruct = {
+  hashedUsername: BytesLike;
+  credentialId: BytesLike;
+  pubkey: CosePublicKeyStruct;
+  optionalPassword: BytesLike;
+  wallet: WalletDataStruct;
+};
+
+export type NewAccountStructOutput = [
+  hashedUsername: string,
+  credentialId: string,
+  pubkey: CosePublicKeyStructOutput,
+  optionalPassword: string,
+  wallet: WalletDataStructOutput
+] & {
+  hashedUsername: string;
+  credentialId: string;
+  pubkey: CosePublicKeyStructOutput;
+  optionalPassword: string;
+  wallet: WalletDataStructOutput;
+};
 
 export declare namespace MakeJSON {
   export type KeyValueStruct = { t: BigNumberish; k: string; v: string };
@@ -117,6 +135,8 @@ export interface AccountManagerInterface extends Interface {
     nameOrSignature:
       | "DEFAULT_ADMIN_ROLE"
       | "UPGRADE_INTERFACE_VERSION"
+      | "addWallet"
+      | "addWalletPassword"
       | "createAccount"
       | "credentialIdsByUsername"
       | "encryptedTx"
@@ -164,8 +184,16 @@ export interface AccountManagerInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "addWallet",
+    values: [ActionCredStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "addWalletPassword",
+    values: [ActionPassStruct]
+  ): string;
+  encodeFunctionData(
     functionFragment: "createAccount",
-    values: [AccountManager.NewAccountStruct]
+    values: [NewAccountStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "credentialIdsByUsername",
@@ -192,7 +220,7 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "getAccount",
-    values: [BytesLike]
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
@@ -216,11 +244,11 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "manageCredential",
-    values: [AccountManager.ManageCredStruct]
+    values: [ActionCredStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "manageCredentialPassword",
-    values: [AccountManager.ManageCredPassStruct]
+    values: [ActionPassStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "personalization",
@@ -232,11 +260,11 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "proxyView",
-    values: [BytesLike, AuthenticatorResponseStruct, BytesLike]
+    values: [BytesLike, AuthenticatorResponseStruct, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "proxyViewPassword",
-    values: [BytesLike, BytesLike, BytesLike]
+    values: [BytesLike, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
@@ -275,6 +303,11 @@ export interface AccountManagerInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "UPGRADE_INTERFACE_VERSION",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "addWallet", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "addWalletPassword",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -501,8 +534,20 @@ export interface AccountManager extends BaseContract {
 
   UPGRADE_INTERFACE_VERSION: TypedContractMethod<[], [string], "view">;
 
+  addWallet: TypedContractMethod<
+    [args: ActionCredStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  addWalletPassword: TypedContractMethod<
+    [args: ActionPassStruct],
+    [void],
+    "nonpayable"
+  >;
+
   createAccount: TypedContractMethod<
-    [args: AccountManager.NewAccountStruct],
+    [args: NewAccountStruct],
     [void],
     "nonpayable"
   >;
@@ -540,8 +585,8 @@ export interface AccountManager extends BaseContract {
   >;
 
   getAccount: TypedContractMethod<
-    [in_username: BytesLike],
-    [[string, string] & { account: string; keypairAddress: string }],
+    [in_username: BytesLike, walletType: BigNumberish],
+    [string],
     "view"
   >;
 
@@ -568,13 +613,13 @@ export interface AccountManager extends BaseContract {
   >;
 
   manageCredential: TypedContractMethod<
-    [args: AccountManager.ManageCredStruct],
+    [args: ActionCredStruct],
     [void],
     "nonpayable"
   >;
 
   manageCredentialPassword: TypedContractMethod<
-    [args: AccountManager.ManageCredPassStruct],
+    [args: ActionPassStruct],
     [void],
     "nonpayable"
   >;
@@ -587,6 +632,7 @@ export interface AccountManager extends BaseContract {
     [
       in_credentialIdHashed: BytesLike,
       in_resp: AuthenticatorResponseStruct,
+      walletType: BigNumberish,
       in_data: BytesLike
     ],
     [string],
@@ -594,7 +640,12 @@ export interface AccountManager extends BaseContract {
   >;
 
   proxyViewPassword: TypedContractMethod<
-    [in_hashedUsername: BytesLike, in_digest: BytesLike, in_data: BytesLike],
+    [
+      in_hashedUsername: BytesLike,
+      walletType: BigNumberish,
+      in_digest: BytesLike,
+      in_data: BytesLike
+    ],
     [string],
     "view"
   >;
@@ -652,12 +703,14 @@ export interface AccountManager extends BaseContract {
     nameOrSignature: "UPGRADE_INTERFACE_VERSION"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "addWallet"
+  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "addWalletPassword"
+  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "createAccount"
-  ): TypedContractMethod<
-    [args: AccountManager.NewAccountStruct],
-    [void],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[args: NewAccountStruct], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "credentialIdsByUsername"
   ): TypedContractMethod<[in_hashedUsername: BytesLike], [string[]], "view">;
@@ -693,8 +746,8 @@ export interface AccountManager extends BaseContract {
   getFunction(
     nameOrSignature: "getAccount"
   ): TypedContractMethod<
-    [in_username: BytesLike],
-    [[string, string] & { account: string; keypairAddress: string }],
+    [in_username: BytesLike, walletType: BigNumberish],
+    [string],
     "view"
   >;
   getFunction(
@@ -726,18 +779,10 @@ export interface AccountManager extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "manageCredential"
-  ): TypedContractMethod<
-    [args: AccountManager.ManageCredStruct],
-    [void],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "manageCredentialPassword"
-  ): TypedContractMethod<
-    [args: AccountManager.ManageCredPassStruct],
-    [void],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "personalization"
   ): TypedContractMethod<[], [string], "view">;
@@ -750,6 +795,7 @@ export interface AccountManager extends BaseContract {
     [
       in_credentialIdHashed: BytesLike,
       in_resp: AuthenticatorResponseStruct,
+      walletType: BigNumberish,
       in_data: BytesLike
     ],
     [string],
@@ -758,7 +804,12 @@ export interface AccountManager extends BaseContract {
   getFunction(
     nameOrSignature: "proxyViewPassword"
   ): TypedContractMethod<
-    [in_hashedUsername: BytesLike, in_digest: BytesLike, in_data: BytesLike],
+    [
+      in_hashedUsername: BytesLike,
+      walletType: BigNumberish,
+      in_digest: BytesLike,
+      in_data: BytesLike
+    ],
     [string],
     "view"
   >;

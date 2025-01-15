@@ -19,7 +19,7 @@ import type {
   TypedEventLog,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../common";
 
 export type WalletStruct = { keypairAddress: AddressLike; title: string };
 
