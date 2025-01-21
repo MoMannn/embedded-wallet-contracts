@@ -18,7 +18,7 @@ contract AccountEVM is Account {
         Wallet memory wal = wallets[walletId];
 
         return EIP155Signer.sign(
-            wal.keypairAddress, 
+            bytes32ToAddress(wal.keypairAddress), 
             walletSecret[wal.keypairAddress], 
             txToSign
         );
@@ -33,7 +33,7 @@ contract AccountEVM is Account {
         Wallet memory wal = wallets[walletId];
 
         return EthereumUtils.sign(
-            wal.keypairAddress, 
+            bytes32ToAddress(wal.keypairAddress), 
             walletSecret[wal.keypairAddress], 
             digest
         );
@@ -69,21 +69,40 @@ contract AccountEVM is Account {
         }
 
         require(
-            walletSecret[keypairAddress] == bytes32(0), 
+            walletSecret[addressToBytes32(keypairAddress)] == bytes32(0), 
             "Wallet already imported"
         );
 
         wallets.push(
             Wallet(
-                keypairAddress,
+                addressToBytes32(keypairAddress),
                 title
             )
         );
 
-        walletSecret[keypairAddress] = keypairSecret;
+        walletSecret[addressToBytes32(keypairAddress)] = keypairSecret;
 
         _controllers[keypairAddress] = true;
 
         return keypairAddress;
     }
+
+    /**
+     * @dev Converts an address to bytes32.
+     * @param _addr The address to convert.
+     * @return The bytes32 representation of the address.
+     */
+    function addressToBytes32(address _addr) public pure returns (bytes32) {
+        return bytes32(uint256(uint160(_addr)));
+    }
+
+    /**
+     * @dev Converts bytes32 to an address.
+     * @param _b The bytes32 value to convert.
+     * @return The address representation of bytes32.
+     */
+    function bytes32ToAddress(bytes32 _b) public pure returns (address) {
+        return address(uint160(uint256(_b)));
+    }
+
 }

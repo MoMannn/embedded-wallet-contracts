@@ -21,7 +21,7 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export type WalletStruct = { keypairAddress: AddressLike; title: string };
+export type WalletStruct = { keypairAddress: BytesLike; title: string };
 
 export type WalletStructOutput = [keypairAddress: string, title: string] & {
   keypairAddress: string;
@@ -73,6 +73,8 @@ export declare namespace EIP155Signer {
 export interface AccountEVMInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "addressToBytes32"
+      | "bytes32ToAddress"
       | "call"
       | "createWallet"
       | "exportPrivateKey"
@@ -88,6 +90,14 @@ export interface AccountEVMInterface extends Interface {
       | "walletAddress"
   ): FunctionFragment;
 
+  encodeFunctionData(
+    functionFragment: "addressToBytes32",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "bytes32ToAddress",
+    values: [BytesLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "call",
     values: [AddressLike, BytesLike]
@@ -141,6 +151,14 @@ export interface AccountEVMInterface extends Interface {
     values: [BigNumberish]
   ): string;
 
+  decodeFunctionResult(
+    functionFragment: "addressToBytes32",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "bytes32ToAddress",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "call", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "createWallet",
@@ -220,6 +238,10 @@ export interface AccountEVM extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  addressToBytes32: TypedContractMethod<[_addr: AddressLike], [string], "view">;
+
+  bytes32ToAddress: TypedContractMethod<[_b: BytesLike], [string], "view">;
+
   call: TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
     [string],
@@ -241,7 +263,7 @@ export interface AccountEVM extends BaseContract {
   getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
 
   init: TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
     [void],
     "nonpayable"
   >;
@@ -295,6 +317,12 @@ export interface AccountEVM extends BaseContract {
   ): T;
 
   getFunction(
+    nameOrSignature: "addressToBytes32"
+  ): TypedContractMethod<[_addr: AddressLike], [string], "view">;
+  getFunction(
+    nameOrSignature: "bytes32ToAddress"
+  ): TypedContractMethod<[_b: BytesLike], [string], "view">;
+  getFunction(
     nameOrSignature: "call"
   ): TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
@@ -317,7 +345,7 @@ export interface AccountEVM extends BaseContract {
   getFunction(
     nameOrSignature: "init"
   ): TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
     [void],
     "nonpayable"
   >;

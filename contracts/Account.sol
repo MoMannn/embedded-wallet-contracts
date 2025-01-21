@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 struct Wallet {
-    address keypairAddress;
+    bytes32 keypairAddress;
     string title;
 }
 
@@ -14,7 +14,7 @@ abstract contract Account {
 
     Wallet[] internal wallets;
 
-    mapping(address => bytes32) internal walletSecret;
+    mapping(bytes32 => bytes32) internal walletSecret;
 
     constructor () {
         _initialized = true;
@@ -28,7 +28,7 @@ abstract contract Account {
     }
 
     function init (
-        address starterOwner, 
+        address initialController, 
         bytes32 keypairSecret,
         string memory title
     )
@@ -36,7 +36,7 @@ abstract contract Account {
     {
         require( ! _initialized, "AlreadyInitialized" );
 
-        _controllers[starterOwner] = true;
+        _controllers[initialController] = true;
 
         _createWallet(keypairSecret, title);
 
@@ -68,7 +68,7 @@ abstract contract Account {
     function walletAddress (uint256 walletId)
         public virtual view 
         onlyByController
-        returns (address) 
+        returns (bytes32) 
     {
         require(walletId < wallets.length, "Invalid wallet id");
         return wallets[walletId].keypairAddress;
