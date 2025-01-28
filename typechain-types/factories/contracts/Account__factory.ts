@@ -37,11 +37,6 @@ const _abi = [
         name: "keypairSecret",
         type: "bytes32",
       },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
     ],
     name: "createWallet",
     outputs: [
@@ -78,21 +73,9 @@ const _abi = [
     name: "getWalletList",
     outputs: [
       {
-        components: [
-          {
-            internalType: "bytes32",
-            name: "keypairAddress",
-            type: "bytes32",
-          },
-          {
-            internalType: "string",
-            name: "title",
-            type: "string",
-          },
-        ],
-        internalType: "struct Wallet[]",
+        internalType: "bytes32[]",
         name: "",
-        type: "tuple[]",
+        type: "bytes32[]",
       },
     ],
     stateMutability: "view",
@@ -109,11 +92,6 @@ const _abi = [
         internalType: "bytes32",
         name: "keypairSecret",
         type: "bytes32",
-      },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
       },
     ],
     name: "init",
@@ -196,24 +174,6 @@ const _abi = [
       },
     ],
     name: "transfer",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "walletId",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
-    ],
-    name: "updateTitle",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

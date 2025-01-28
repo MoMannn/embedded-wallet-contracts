@@ -15,7 +15,7 @@ contract TestAccount {
         public
     {
         AccountEVM acct = AccountEVM(
-            factory.clone(msg.sender, WalletType.EVM, bytes32(0), "Test wallet")
+            factory.clone(msg.sender, WalletType.EVM, bytes32(0))
         );
         emit CloneCreated(address(acct));
     }

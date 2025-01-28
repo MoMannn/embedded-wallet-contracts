@@ -21,13 +21,6 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export type WalletStruct = { keypairAddress: BytesLike; title: string };
-
-export type WalletStructOutput = [keypairAddress: string, title: string] & {
-  keypairAddress: string;
-  title: string;
-};
-
 export type SignatureRSVStruct = {
   r: BytesLike;
   s: BytesLike;
@@ -86,7 +79,6 @@ export interface AccountEVMInterface extends Interface {
       | "signEIP155"
       | "staticcall"
       | "transfer"
-      | "updateTitle"
       | "walletAddress"
   ): FunctionFragment;
 
@@ -104,7 +96,7 @@ export interface AccountEVMInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createWallet",
-    values: [BytesLike, string]
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "exportPrivateKey",
@@ -116,7 +108,7 @@ export interface AccountEVMInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "init",
-    values: [AddressLike, BytesLike, string]
+    values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "isController",
@@ -141,10 +133,6 @@ export interface AccountEVMInterface extends Interface {
   encodeFunctionData(
     functionFragment: "transfer",
     values: [AddressLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "updateTitle",
-    values: [BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "walletAddress",
@@ -185,10 +173,6 @@ export interface AccountEVMInterface extends Interface {
   decodeFunctionResult(functionFragment: "signEIP155", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "updateTitle",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(
     functionFragment: "walletAddress",
     data: BytesLike
@@ -249,7 +233,7 @@ export interface AccountEVM extends BaseContract {
   >;
 
   createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
+    [keypairSecret: BytesLike],
     [string],
     "nonpayable"
   >;
@@ -260,10 +244,10 @@ export interface AccountEVM extends BaseContract {
     "view"
   >;
 
-  getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  getWalletList: TypedContractMethod<[], [string[]], "view">;
 
   init: TypedContractMethod<
-    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -300,12 +284,6 @@ export interface AccountEVM extends BaseContract {
     "nonpayable"
   >;
 
-  updateTitle: TypedContractMethod<
-    [walletId: BigNumberish, title: string],
-    [void],
-    "nonpayable"
-  >;
-
   walletAddress: TypedContractMethod<
     [walletId: BigNumberish],
     [string],
@@ -331,21 +309,17 @@ export interface AccountEVM extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "createWallet"
-  ): TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
-    [string],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
   getFunction(
     nameOrSignature: "exportPrivateKey"
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "getWalletList"
-  ): TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  ): TypedContractMethod<[], [string[]], "view">;
   getFunction(
     nameOrSignature: "init"
   ): TypedContractMethod<
-    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -384,13 +358,6 @@ export interface AccountEVM extends BaseContract {
     nameOrSignature: "transfer"
   ): TypedContractMethod<
     [in_target: AddressLike, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "updateTitle"
-  ): TypedContractMethod<
-    [walletId: BigNumberish, title: string],
     [void],
     "nonpayable"
   >;

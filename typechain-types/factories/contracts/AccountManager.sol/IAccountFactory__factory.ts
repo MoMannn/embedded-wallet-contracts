@@ -26,11 +26,6 @@ const _abi = [
         name: "keypairSecret",
         type: "bytes32",
       },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
     ],
     name: "clone",
     outputs: [

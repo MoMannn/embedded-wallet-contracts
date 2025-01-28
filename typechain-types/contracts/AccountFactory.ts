@@ -59,7 +59,7 @@ export interface AccountFactoryInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "clone",
-    values: [AddressLike, BigNumberish, BytesLike, string]
+    values: [AddressLike, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
@@ -266,8 +266,7 @@ export interface AccountFactory extends BaseContract {
     [
       starterOwner: AddressLike,
       walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
+      keypairSecret: BytesLike
     ],
     [string],
     "nonpayable"
@@ -331,8 +330,7 @@ export interface AccountFactory extends BaseContract {
     [
       starterOwner: AddressLike,
       walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
+      keypairSecret: BytesLike
     ],
     [string],
     "nonpayable"
