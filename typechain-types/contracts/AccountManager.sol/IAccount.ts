@@ -8,7 +8,6 @@ import type {
   FunctionFragment,
   Result,
   Interface,
-  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -21,22 +20,35 @@ import type {
   TypedContractMethod,
 } from "../../common";
 
-export interface IAccountFactoryInterface extends Interface {
-  getFunction(nameOrSignature: "clone"): FunctionFragment;
+export interface IAccountInterface extends Interface {
+  getFunction(
+    nameOrSignature: "createWallet" | "updateTitle"
+  ): FunctionFragment;
 
   encodeFunctionData(
-    functionFragment: "clone",
-    values: [AddressLike, BigNumberish, BytesLike, string]
+    functionFragment: "createWallet",
+    values: [BytesLike, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "updateTitle",
+    values: [BigNumberish, string]
   ): string;
 
-  decodeFunctionResult(functionFragment: "clone", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "createWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "updateTitle",
+    data: BytesLike
+  ): Result;
 }
 
-export interface IAccountFactory extends BaseContract {
-  connect(runner?: ContractRunner | null): IAccountFactory;
+export interface IAccount extends BaseContract {
+  connect(runner?: ContractRunner | null): IAccount;
   waitForDeployment(): Promise<this>;
 
-  interface: IAccountFactoryInterface;
+  interface: IAccountInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -75,14 +87,15 @@ export interface IAccountFactory extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  clone: TypedContractMethod<
-    [
-      starterOwner: AddressLike,
-      walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
-    ],
+  createWallet: TypedContractMethod<
+    [keypairSecret: BytesLike, title: string],
     [string],
+    "nonpayable"
+  >;
+
+  updateTitle: TypedContractMethod<
+    [walletId: BigNumberish, title: string],
+    [void],
     "nonpayable"
   >;
 
@@ -91,15 +104,17 @@ export interface IAccountFactory extends BaseContract {
   ): T;
 
   getFunction(
-    nameOrSignature: "clone"
+    nameOrSignature: "createWallet"
   ): TypedContractMethod<
-    [
-      starterOwner: AddressLike,
-      walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
-    ],
+    [keypairSecret: BytesLike, title: string],
     [string],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "updateTitle"
+  ): TypedContractMethod<
+    [walletId: BigNumberish, title: string],
+    [void],
     "nonpayable"
   >;
 

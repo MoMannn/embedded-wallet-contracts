@@ -25,6 +25,9 @@ const config: HardhatUserConfig = {
       viaIR: true,
     },
   },
+  mocha: {
+    timeout: 100000000
+  },
   networks: {
     // hardhat: {
     //   hardfork: "shanghai",

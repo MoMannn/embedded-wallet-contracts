@@ -19,9 +19,9 @@ import type {
   TypedEventLog,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../common";
 
-export type WalletStruct = { keypairAddress: AddressLike; title: string };
+export type WalletStruct = { keypairAddress: BytesLike; title: string };
 
 export type WalletStructOutput = [keypairAddress: string, title: string] & {
   keypairAddress: string;
@@ -187,7 +187,7 @@ export interface Account extends BaseContract {
   getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
 
   init: TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
     [void],
     "nonpayable"
   >;
@@ -251,7 +251,7 @@ export interface Account extends BaseContract {
   getFunction(
     nameOrSignature: "init"
   ): TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
     [void],
     "nonpayable"
   >;

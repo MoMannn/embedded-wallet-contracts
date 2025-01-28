@@ -16,11 +16,26 @@ const _abi = [
         name: "starterOwner",
         type: "address",
       },
+      {
+        internalType: "enum WalletType",
+        name: "walletType",
+        type: "uint8",
+      },
+      {
+        internalType: "bytes32",
+        name: "keypairSecret",
+        type: "bytes32",
+      },
+      {
+        internalType: "string",
+        name: "title",
+        type: "string",
+      },
     ],
     name: "clone",
     outputs: [
       {
-        internalType: "contract Account",
+        internalType: "address",
         name: "acct",
         type: "address",
       },

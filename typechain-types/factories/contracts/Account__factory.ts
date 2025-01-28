@@ -3,10 +3,7 @@
 /* eslint-disable */
 
 import { Contract, Interface, type ContractRunner } from "ethers";
-import type {
-  Account,
-  AccountInterface,
-} from "../../../contracts/Account.sol/Account";
+import type { Account, AccountInterface } from "../../contracts/Account";
 
 const _abi = [
   {
@@ -83,9 +80,9 @@ const _abi = [
       {
         components: [
           {
-            internalType: "address",
+            internalType: "bytes32",
             name: "keypairAddress",
-            type: "address",
+            type: "bytes32",
           },
           {
             internalType: "string",
@@ -105,7 +102,7 @@ const _abi = [
     inputs: [
       {
         internalType: "address",
-        name: "starterOwner",
+        name: "initialController",
         type: "address",
       },
       {
@@ -232,9 +229,9 @@ const _abi = [
     name: "walletAddress",
     outputs: [
       {
-        internalType: "address",
+        internalType: "bytes32",
         name: "",
-        type: "address",
+        type: "bytes32",
       },
     ],
     stateMutability: "view",
