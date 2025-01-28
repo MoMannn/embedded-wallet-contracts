@@ -2,17 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-struct Wallet {
-    bytes32 keypairAddress;
-    string title;
-}
-
 abstract contract Account {
     bool internal _initialized;
 
     mapping(address => bool) internal _controllers;
 
-    Wallet[] internal wallets;
+    bytes32[] internal wallets;
 
     mapping(bytes32 => bytes32) internal walletSecret;
 
@@ -29,8 +24,7 @@ abstract contract Account {
 
     function init (
         address initialController, 
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         public virtual
     {
@@ -38,7 +32,7 @@ abstract contract Account {
 
         _controllers[initialController] = true;
 
-        _createWallet(keypairSecret, title);
+        _createWallet(keypairSecret);
 
         _initialized = true;
     }
@@ -60,7 +54,7 @@ abstract contract Account {
     function getWalletList ()
         public virtual view 
         onlyByController
-        returns (Wallet[] memory) 
+        returns (bytes32[] memory) 
     {
         return wallets;
     }
@@ -71,7 +65,7 @@ abstract contract Account {
         returns (bytes32) 
     {
         require(walletId < wallets.length, "Invalid wallet id");
-        return wallets[walletId].keypairAddress;
+        return wallets[walletId];
     }
 
     function exportPrivateKey (uint256 walletId)
@@ -79,8 +73,7 @@ abstract contract Account {
         onlyByController
         returns (bytes32)
     {
-        Wallet memory wal = wallets[walletId];
-        return walletSecret[wal.keypairAddress];
+        return walletSecret[wallets[walletId]];
     }
 
     function transfer (address in_target, uint256 amount)
@@ -117,33 +110,19 @@ abstract contract Account {
     }
 
     function createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         external
         onlyByController
         returns (address) 
     {
-        return _createWallet(keypairSecret, title);
-    }
-
-    function updateTitle (
-        uint256 walletId,
-        string memory title
-    )
-        external virtual
-        onlyByController
-    {
-        require(walletId < wallets.length, "Invalid wallet id");
-        require(bytes(title).length > 0, "Title cannot be empty");
-        wallets[walletId].title = title;
+        return _createWallet(keypairSecret);
     }
 
     /**
       * PRIVATE FUNCTIONS 
       */
     function _createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     ) internal virtual returns (address);
 }

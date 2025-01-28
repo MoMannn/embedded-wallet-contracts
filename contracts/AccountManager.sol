@@ -12,7 +12,6 @@ import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol
 import {EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
 
-import {Wallet} from "./Account.sol";
 import {WalletType} from "./AccountFactory.sol";
 import {WebAuthN,CosePublicKey,AuthenticatorResponse} from "./lib/WebAuthN.sol";
 
@@ -20,21 +19,14 @@ interface IAccountFactory {
     function clone (
         address starterOwner, 
         WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     ) external returns (address acct);
 }
 
 interface IAccount {
     function createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     ) external returns (address);
-
-    function updateTitle (
-        uint256 walletId,
-        string memory title
-    ) external;
 }
 
 struct UserCredential {
@@ -59,9 +51,7 @@ enum TxType {
     ManageCredential,
     ManageCredentialPassword,
     AddWallet,
-    AddWalletPassword,
-    UpdateTitle,
-    UpdateTitlePassword
+    AddWalletPassword
 }
 
 enum CredentialAction {
@@ -98,7 +88,6 @@ struct NewAccount {
 struct WalletData {
     WalletType walletType;
     bytes32 keypairSecret; // if 0x000.. then generate new
-    string title;
 }
 
 contract AccountManagerStorage {
@@ -242,8 +231,7 @@ contract AccountManager is AccountManagerStorage,
             args.hashedUsername, 
             args.optionalPassword, 
             args.wallet.walletType,
-            args.wallet.keypairSecret,
-            args.wallet.title
+            args.wallet.keypairSecret
         );
 
         internal_addCredential(args.hashedUsername, args.credentialId, args.pubkey);
@@ -309,37 +297,6 @@ contract AccountManager is AccountManagerStorage,
         );
 
         internal_manageCredential(user, args.data);
-    }
-
-    /**
-     * @dev Update wallet title with credential
-     *
-     * @param args credential data
-     */
-    function walletUpdateTitle (ActionCred memory args) 
-        public 
-    {
-        bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
-        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
-
-        internal_walletUpdateTitle(user, args.data);
-    }
-
-    /**
-     * @dev Update wallet title with password
-     *
-     * @param args credential data
-     */
-    function walletUpdateTitlePassword (ActionPass memory args) 
-        public 
-    {
-        User memory user = internal_verifyPassword(
-            args.hashedUsername, 
-            args.digest, 
-            args.data
-        );
-
-        internal_walletUpdateTitle(user, args.data);
     }
 
     /**
@@ -470,8 +427,7 @@ contract AccountManager is AccountManagerStorage,
         bytes32 in_hashedUsername, 
         bytes32 in_optionalPassword,
         WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         internal
         returns (User storage user)
@@ -493,8 +449,7 @@ contract AccountManager is AccountManagerStorage,
             accountFactory.clone(
                 address(this), 
                 walletType,
-                keypairSecret,
-                title
+                keypairSecret
             )
         );
     }
@@ -513,32 +468,12 @@ contract AccountManager is AccountManagerStorage,
                 user.username, 
                 bytes32(0), // skip password 
                 wallet.walletType,
-                wallet.keypairSecret,
-                wallet.title
+                wallet.keypairSecret
             );
         } else {
             // Add wallet to an existing account
-            account.createWallet(wallet.keypairSecret, wallet.title);
+            account.createWallet(wallet.keypairSecret);
         }
-    }
-
-    function internal_walletUpdateTitle(
-        User memory user,
-        bytes memory data
-    ) internal {
-        (
-            uint256 walletType, 
-            uint256 walletId,
-            string memory title
-        ) = abi.decode(data, (uint256, uint256, string));
-
-        IAccount account = user.accounts[walletType];
-        require(
-            address(account) != address(0), 
-            "Account for this walletType not initialized"
-        );
-
-        account.updateTitle(walletId, title);
     }
 
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
@@ -703,8 +638,7 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredential) || 
-            gaslessArgs.txType == uint8(TxType.AddWallet) ||
-            gaslessArgs.txType == uint8(TxType.UpdateTitle)
+            gaslessArgs.txType == uint8(TxType.AddWallet)
         ) {
             ActionCred memory args = abi.decode(gaslessArgs.funcData, (ActionCred));
 
@@ -712,8 +646,6 @@ contract AccountManager is AccountManagerStorage,
                 manageCredential(args);
             } else if (gaslessArgs.txType == uint8(TxType.AddWallet)) {
                 addWallet(args);
-            } else if (gaslessArgs.txType == uint8(TxType.UpdateTitle)) {
-                walletUpdateTitle(args);
             }
             
             // Get user for emit event
@@ -721,8 +653,7 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredentialPassword) ||
-            gaslessArgs.txType == uint8(TxType.AddWalletPassword) ||
-            gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)
+            gaslessArgs.txType == uint8(TxType.AddWalletPassword)
         ) {
             ActionPass memory args = abi.decode(gaslessArgs.funcData, (ActionPass));
 
@@ -730,8 +661,6 @@ contract AccountManager is AccountManagerStorage,
                 manageCredentialPassword(args);
             } else if(gaslessArgs.txType == uint8(TxType.AddWalletPassword)) { 
                 addWalletPassword(args);
-            } else if(gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)) { 
-                walletUpdateTitlePassword(args);
             }
 
             // Get user for emit event

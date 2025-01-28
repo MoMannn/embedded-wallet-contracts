@@ -40,8 +40,7 @@ contract AccountFactory is CloneFactory,
     function clone (
         address starterOwner,
         WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         public
         returns (address)
@@ -50,8 +49,7 @@ contract AccountFactory is CloneFactory,
             AccountEVM acct = AccountEVM(createClone(address(accountEVM)));
             acct.init(
                 starterOwner,
-                keypairSecret,
-                title
+                keypairSecret
             );
             return address(acct);
         } else {

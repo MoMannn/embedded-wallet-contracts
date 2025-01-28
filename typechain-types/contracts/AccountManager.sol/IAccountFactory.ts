@@ -26,7 +26,7 @@ export interface IAccountFactoryInterface extends Interface {
 
   encodeFunctionData(
     functionFragment: "clone",
-    values: [AddressLike, BigNumberish, BytesLike, string]
+    values: [AddressLike, BigNumberish, BytesLike]
   ): string;
 
   decodeFunctionResult(functionFragment: "clone", data: BytesLike): Result;
@@ -79,8 +79,7 @@ export interface IAccountFactory extends BaseContract {
     [
       starterOwner: AddressLike,
       walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
+      keypairSecret: BytesLike
     ],
     [string],
     "nonpayable"
@@ -96,8 +95,7 @@ export interface IAccountFactory extends BaseContract {
     [
       starterOwner: AddressLike,
       walletType: BigNumberish,
-      keypairSecret: BytesLike,
-      title: string
+      keypairSecret: BytesLike
     ],
     [string],
     "nonpayable"

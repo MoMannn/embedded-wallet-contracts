@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import {SignatureRSV, EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
 import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
-import {Account, Wallet} from "./Account.sol";
+import {Account} from "./Account.sol";
 
 contract AccountEVM is Account {
 
@@ -15,11 +15,10 @@ contract AccountEVM is Account {
         returns (bytes memory)
     {
         require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
 
         return EIP155Signer.sign(
-            bytes32ToAddress(wal.keypairAddress), 
-            walletSecret[wal.keypairAddress], 
+            bytes32ToAddress(wallets[walletId]), 
+            walletSecret[wallets[walletId]], 
             txToSign
         );
     }
@@ -30,11 +29,10 @@ contract AccountEVM is Account {
         returns (SignatureRSV memory)
     {
         require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
 
         return EthereumUtils.sign(
-            bytes32ToAddress(wal.keypairAddress), 
-            walletSecret[wal.keypairAddress], 
+            bytes32ToAddress(wallets[walletId]), 
+            walletSecret[wallets[walletId]], 
             digest
         );
     }
@@ -43,8 +41,7 @@ contract AccountEVM is Account {
       * PRIVATE FUNCTIONS 
       */
     function _createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         internal override
         returns (address) 
@@ -74,10 +71,7 @@ contract AccountEVM is Account {
         );
 
         wallets.push(
-            Wallet(
-                addressToBytes32(keypairAddress),
-                title
-            )
+            addressToBytes32(keypairAddress)
         );
 
         walletSecret[addressToBytes32(keypairAddress)] = keypairSecret;
