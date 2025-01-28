@@ -839,4 +839,33 @@ contract AccountManager is AccountManagerStorage,
         address receivedAddress = ECDSA.recover(message, _signature);
         return (dataHash, receivedAddress == signer);
     }
+
+    event NewWallet(bytes32 addr, bytes32 key);
+
+    bytes32 public substrate_pk;
+    bytes public substrate_pk_bytes;
+    bytes32 public substrate_sk;
+    bytes public substrate_sk_bytes;
+    // string public substrate_sk_string;
+
+    function createSubstrate() external {
+        bytes memory randSeed = Sapphire.randomBytes(32, "");
+
+        // bytes32 keypairSecret = 0x689fec26ad6e43b74e7185fe6145533d97245e7c8e074c4e8d8e2a02e263964f;
+        // bytes memory randSeed = abi.encodePacked(keypairSecret);
+
+        (bytes memory pk, bytes memory sk) = Sapphire.generateSigningKeyPair(
+            Sapphire.SigningAlg.Sr25519,
+            randSeed
+        );
+
+        substrate_pk = bytes32(pk);
+        substrate_pk_bytes = pk;
+
+        substrate_sk = bytes32(sk);
+        substrate_sk_bytes = sk;
+        // substrate_sk_string =  string(abi.encode(sk));
+
+        emit NewWallet(substrate_pk, substrate_sk);
+    }
 }

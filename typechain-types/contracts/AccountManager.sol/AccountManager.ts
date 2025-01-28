@@ -138,6 +138,7 @@ export interface AccountManagerInterface extends Interface {
       | "addWallet"
       | "addWalletPassword"
       | "createAccount"
+      | "createSubstrate"
       | "credentialIdsByUsername"
       | "encryptedTx"
       | "gaspayingAddress"
@@ -159,6 +160,10 @@ export interface AccountManagerInterface extends Interface {
       | "salt"
       | "setSigner"
       | "signer"
+      | "substrate_pk"
+      | "substrate_pk_bytes"
+      | "substrate_sk"
+      | "substrate_sk_bytes"
       | "supportsInterface"
       | "upgradeToAndCall"
       | "userExists"
@@ -171,6 +176,7 @@ export interface AccountManagerInterface extends Interface {
     nameOrSignatureOrTopic:
       | "GaslessTransaction"
       | "Initialized"
+      | "NewWallet"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
@@ -196,6 +202,10 @@ export interface AccountManagerInterface extends Interface {
   encodeFunctionData(
     functionFragment: "createAccount",
     values: [NewAccountStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "createSubstrate",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "credentialIdsByUsername",
@@ -283,6 +293,22 @@ export interface AccountManagerInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "signer", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "substrate_pk",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "substrate_pk_bytes",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "substrate_sk",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "substrate_sk_bytes",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
@@ -322,6 +348,10 @@ export interface AccountManagerInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "createAccount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "createSubstrate",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -379,6 +409,22 @@ export interface AccountManagerInterface extends Interface {
   decodeFunctionResult(functionFragment: "setSigner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "signer", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "substrate_pk",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "substrate_pk_bytes",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "substrate_sk",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "substrate_sk_bytes",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
   ): Result;
@@ -428,6 +474,19 @@ export namespace InitializedEvent {
   export type OutputTuple = [version: bigint];
   export interface OutputObject {
     version: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace NewWalletEvent {
+  export type InputTuple = [addr: BytesLike, key: BytesLike];
+  export type OutputTuple = [addr: string, key: string];
+  export interface OutputObject {
+    addr: string;
+    key: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -570,6 +629,8 @@ export interface AccountManager extends BaseContract {
     "nonpayable"
   >;
 
+  createSubstrate: TypedContractMethod<[], [void], "nonpayable">;
+
   credentialIdsByUsername: TypedContractMethod<
     [in_hashedUsername: BytesLike],
     [string[]],
@@ -684,6 +745,14 @@ export interface AccountManager extends BaseContract {
 
   setSigner: TypedContractMethod<[_signer: AddressLike], [void], "nonpayable">;
 
+  substrate_pk: TypedContractMethod<[], [string], "view">;
+
+  substrate_pk_bytes: TypedContractMethod<[], [string], "view">;
+
+  substrate_sk: TypedContractMethod<[], [string], "view">;
+
+  substrate_sk_bytes: TypedContractMethod<[], [string], "view">;
+
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
     [boolean],
@@ -741,6 +810,9 @@ export interface AccountManager extends BaseContract {
   getFunction(
     nameOrSignature: "createAccount"
   ): TypedContractMethod<[args: NewAccountStruct], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "createSubstrate"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "credentialIdsByUsername"
   ): TypedContractMethod<[in_hashedUsername: BytesLike], [string[]], "view">;
@@ -867,6 +939,18 @@ export interface AccountManager extends BaseContract {
     nameOrSignature: "signer"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "substrate_pk"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "substrate_pk_bytes"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "substrate_sk"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "substrate_sk_bytes"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
@@ -912,6 +996,13 @@ export interface AccountManager extends BaseContract {
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
+  >;
+  getEvent(
+    key: "NewWallet"
+  ): TypedContractEvent<
+    NewWalletEvent.InputTuple,
+    NewWalletEvent.OutputTuple,
+    NewWalletEvent.OutputObject
   >;
   getEvent(
     key: "RoleAdminChanged"
@@ -963,6 +1054,17 @@ export interface AccountManager extends BaseContract {
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
       InitializedEvent.OutputObject
+    >;
+
+    "NewWallet(bytes32,bytes32)": TypedContractEvent<
+      NewWalletEvent.InputTuple,
+      NewWalletEvent.OutputTuple,
+      NewWalletEvent.OutputObject
+    >;
+    NewWallet: TypedContractEvent<
+      NewWalletEvent.InputTuple,
+      NewWalletEvent.OutputTuple,
+      NewWalletEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<

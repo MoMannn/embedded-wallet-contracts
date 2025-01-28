@@ -45,7 +45,8 @@ const config: HardhatUserConfig = {
       chainId: 0x5aff, // 23295
       accounts: [privateKeyTestnet],
     },
-    sapphireLocalnet: { // docker run -it -p8545:8545 -p8546:8546 ghcr.io/oasisprotocol/sapphire-localnet -test-mnemonic
+    sapphireLocalnet: { // docker run -it -p8545:8545 -p8546:8546 ghcr.io/oasisprotocol/sapphire-localnet
+      // docker run -it -p8544-8548:8544-8548 -e OASIS_NODE_LOG_LEVEL=debug ghcr.io/oasisprotocol/sapphire-localnet
       url: 'http://localhost:8545',
       chainId: 0x5afd,
       accounts: TEST_HDWALLET,
