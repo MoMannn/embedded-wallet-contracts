@@ -75,6 +75,7 @@ export interface AccountEVMInterface extends Interface {
       | "init"
       | "isController"
       | "modifyController"
+      | "removeWallet"
       | "sign"
       | "signEIP155"
       | "staticcall"
@@ -117,6 +118,10 @@ export interface AccountEVMInterface extends Interface {
   encodeFunctionData(
     functionFragment: "modifyController",
     values: [AddressLike, boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "sign",
@@ -167,6 +172,10 @@ export interface AccountEVMInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "modifyController",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "sign", data: BytesLike): Result;
@@ -260,6 +269,12 @@ export interface AccountEVM extends BaseContract {
     "nonpayable"
   >;
 
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   sign: TypedContractMethod<
     [walletId: BigNumberish, digest: BytesLike],
     [SignatureRSVStructOutput],
@@ -333,6 +348,9 @@ export interface AccountEVM extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "sign"
   ): TypedContractMethod<

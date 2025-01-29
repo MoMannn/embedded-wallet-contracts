@@ -27,6 +27,10 @@ interface IAccount {
     function createWallet (
         bytes32 keypairSecret
     ) external returns (address);
+
+    function removeWallet (
+        uint256 walletId
+    ) external;
 }
 
 struct UserCredential {
@@ -51,7 +55,9 @@ enum TxType {
     ManageCredential,
     ManageCredentialPassword,
     AddWallet,
-    AddWalletPassword
+    AddWalletPassword,
+    RemoveWallet,
+    RemoveWalletPassword
 }
 
 enum CredentialAction {
@@ -300,6 +306,37 @@ contract AccountManager is AccountManagerStorage,
     }
 
     /**
+     * @dev Remove wallet with credential
+     *
+     * @param args credential data
+     */
+    function removeWallet (ActionCred memory args) 
+        public 
+    {
+        bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
+        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
+
+        internal_removeWallet(user, args.data);
+    }
+
+    /**
+     * @dev Remove wallet with password
+     *
+     * @param args credential data
+     */
+    function removeWalletPassword (ActionPass memory args) 
+        public 
+    {
+        User memory user = internal_verifyPassword(
+            args.hashedUsername, 
+            args.digest, 
+            args.data
+        );
+
+        internal_removeWallet(user, args.data);
+    }
+
+    /**
      * @dev Retrieve a list of credential IDs for a specific user
      *
      * @param in_hashedUsername Hashed username
@@ -476,6 +513,24 @@ contract AccountManager is AccountManagerStorage,
         }
     }
 
+    function internal_removeWallet(
+        User memory user,
+        bytes memory data
+    ) internal {
+        (
+            uint256 walletType, 
+            uint256 walletId
+        ) = abi.decode(data, (uint256, uint256));
+
+        IAccount account = user.accounts[walletType];
+        require(
+            address(account) != address(0), 
+            "Account for this walletType not initialized"
+        );
+
+        account.removeWallet(walletId);
+    }
+
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
         internal view
         returns (
@@ -638,7 +693,8 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredential) || 
-            gaslessArgs.txType == uint8(TxType.AddWallet)
+            gaslessArgs.txType == uint8(TxType.AddWallet) ||
+            gaslessArgs.txType == uint8(TxType.RemoveWallet)
         ) {
             ActionCred memory args = abi.decode(gaslessArgs.funcData, (ActionCred));
 
@@ -646,6 +702,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredential(args);
             } else if (gaslessArgs.txType == uint8(TxType.AddWallet)) {
                 addWallet(args);
+            } else if (gaslessArgs.txType == uint8(TxType.RemoveWallet)) {
+                removeWallet(args);
             }
             
             // Get user for emit event
@@ -653,7 +711,8 @@ contract AccountManager is AccountManagerStorage,
 
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredentialPassword) ||
-            gaslessArgs.txType == uint8(TxType.AddWalletPassword)
+            gaslessArgs.txType == uint8(TxType.AddWalletPassword) ||
+            gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)
         ) {
             ActionPass memory args = abi.decode(gaslessArgs.funcData, (ActionPass));
 
@@ -661,6 +720,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredentialPassword(args);
             } else if(gaslessArgs.txType == uint8(TxType.AddWalletPassword)) { 
                 addWalletPassword(args);
+            } else if(gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)) { 
+                removeWalletPassword(args);
             }
 
             // Get user for emit event

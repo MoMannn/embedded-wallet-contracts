@@ -12,6 +12,7 @@ const ACCOUNT_ABI = [
   'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
   'function getWalletList() view returns (bytes32[])',
   'function walletAddress (uint256 walletId) view returns (bytes32)',
+  'function removeWallet(uint256 walletId)',
 ];
 
 describe("AccountManager", function() {
@@ -190,6 +191,87 @@ describe("AccountManager", function() {
     const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
 
     expect(exportedPrivateKey).to.equal(newWallet.privateKey);
+  });
+
+  it.only("Remove wallet", async function() {
+    const username = hashedUsername("testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported
+    let accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets.length).to.equal(2);
+
+    // top-up wallet
+    await owner.sendTransaction({
+      to: accountWallets[0],
+      value: ethers.parseEther("0.1"), // Sends exactly 0.1 ether
+    });
+
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+
+    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
+
+    // Update second wallet
+    const txRequest = {
+      to: accountAddress,
+      data: in_inner_data,
+      gasLimit: 1000000,
+      value: 0,
+      nonce: 0,
+      chainId: SAPPHIRE_LOCALNET,
+      gasPrice: 100000000000, // 100 gwei
+    };
+
+    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_EVM, in_digest, in_data
+    );
+
+    const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+
+    // Broadcast transaction
+    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // Check if wallet correctly imported
+    accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
   });
 
   it("Register + preventing duplicates", async function() {

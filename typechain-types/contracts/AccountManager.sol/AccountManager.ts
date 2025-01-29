@@ -152,6 +152,8 @@ export interface AccountManagerInterface extends Interface {
       | "proxiableUUID"
       | "proxyView"
       | "proxyViewPassword"
+      | "removeWallet"
+      | "removeWalletPassword"
       | "renounceRole"
       | "revokeRole"
       | "salt"
@@ -265,6 +267,14 @@ export interface AccountManagerInterface extends Interface {
     values: [BytesLike, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [ActionCredStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "removeWalletPassword",
+    values: [ActionPassStruct]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
   ): string;
@@ -356,6 +366,14 @@ export interface AccountManagerInterface extends Interface {
   decodeFunctionResult(functionFragment: "proxyView", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "proxyViewPassword",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWalletPassword",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -648,6 +666,18 @@ export interface AccountManager extends BaseContract {
     "view"
   >;
 
+  removeWallet: TypedContractMethod<
+    [args: ActionCredStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  removeWalletPassword: TypedContractMethod<
+    [args: ActionPassStruct],
+    [void],
+    "nonpayable"
+  >;
+
   renounceRole: TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
@@ -811,6 +841,12 @@ export interface AccountManager extends BaseContract {
     [string],
     "view"
   >;
+  getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "removeWalletPassword"
+  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "renounceRole"
   ): TypedContractMethod<

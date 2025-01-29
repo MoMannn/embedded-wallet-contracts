@@ -31,6 +31,7 @@ export interface AccountInterface extends Interface {
       | "init"
       | "isController"
       | "modifyController"
+      | "removeWallet"
       | "staticcall"
       | "transfer"
       | "walletAddress"
@@ -65,6 +66,10 @@ export interface AccountInterface extends Interface {
     values: [AddressLike, boolean]
   ): string;
   encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "staticcall",
     values: [AddressLike, BytesLike]
   ): string;
@@ -97,6 +102,10 @@ export interface AccountInterface extends Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "modifyController",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
@@ -184,6 +193,12 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   staticcall: TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
     [string],
@@ -239,6 +254,9 @@ export interface Account extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "staticcall"
   ): TypedContractMethod<

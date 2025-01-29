@@ -28,6 +28,19 @@ const _abi = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "walletId",
+        type: "uint256",
+      },
+    ],
+    name: "removeWallet",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 export class IAccount__factory {
