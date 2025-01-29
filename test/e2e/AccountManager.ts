@@ -193,7 +193,7 @@ describe("AccountManager", function() {
     expect(exportedPrivateKey).to.equal(newWallet.privateKey);
   });
 
-  it.only("Remove wallet", async function() {
+  it("Remove wallet", async function() {
     const username = hashedUsername("testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
@@ -231,16 +231,21 @@ describe("AccountManager", function() {
     // top-up wallet
     await owner.sendTransaction({
       to: accountWallets[0],
-      value: ethers.parseEther("0.1"), // Sends exactly 0.1 ether
+      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
+    });
+
+    await owner.sendTransaction({
+      to: accountWallets[1],
+      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
     });
 
     const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
+    let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
 
-    // Update second wallet
-    const txRequest = {
+    // Remove second wallet
+    let txRequest = {
       to: accountAddress,
       data: in_inner_data,
       gasLimit: 1000000,
@@ -250,18 +255,18 @@ describe("AccountManager", function() {
       gasPrice: 100000000000, // 100 gwei
     };
 
-    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+    let in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
-    const in_digest = ethers.solidityPackedKeccak256(
+    let in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
       [SIMPLE_PASSWORD, in_data],
     );
 
-    const resp = await WA.proxyViewPassword(
+    let resp = await WA.proxyViewPassword(
       username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
-    const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+    let [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
     // Broadcast transaction
     const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
@@ -272,6 +277,63 @@ describe("AccountManager", function() {
 
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+
+    // Try removing already removed address
+    // Try removing already removed address
+    // Try removing already removed address
+    txRequest.nonce += 1;
+
+    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_EVM, in_digest, in_data
+    );
+
+    [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+
+    const txHashDupl = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const receiptDupl = await waitForTx(txHashDupl);
+
+    // The status of a transaction is 1 is successful or 0 if it was reverted. 
+    expect(receiptDupl.status).to.equal(0);
+
+    // Try performing transaction with removed account (remove wallet 0)
+    // Try performing transaction with removed account (remove wallet 0)
+    // Try performing transaction with removed account (remove wallet 0)
+    in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_0]);;
+
+    // Remove second wallet
+    txRequest = {
+      to: accountAddress,
+      data: in_inner_data,
+      gasLimit: 1000000,
+      value: 0,
+      nonce: 0,
+      chainId: SAPPHIRE_LOCALNET,
+      gasPrice: 100000000000, // 100 gwei
+    };
+
+    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_1, txRequest]);
+
+    in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    let shortMessage;
+    try{
+      resp = await WA.proxyViewPassword(
+        username, WALLET_TYPE_EVM, in_digest, in_data
+      );
+    } catch(e) {
+      shortMessage = e.shortMessage;
+    }
+    expect(shortMessage).to.equal('execution reverted: "Wallet removed"');
   });
 
   it("Register + preventing duplicates", async function() {
@@ -1369,7 +1431,7 @@ describe("AccountManager", function() {
     while(true) {
       const tx = await owner.provider.getTransactionReceipt(txHash);
       if (tx) {
-        break;
+        return tx;
       }
       await new Promise(f => setTimeout(f, 500));
     }
