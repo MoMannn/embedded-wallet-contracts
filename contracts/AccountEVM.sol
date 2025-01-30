@@ -12,9 +12,9 @@ contract AccountEVM is Account {
     function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
         public view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (bytes memory)
     {
-        require(walletId < wallets.length, "Invalid wallet id");
 
         return EIP155Signer.sign(
             bytes32ToAddress(wallets[walletId]), 
@@ -26,9 +26,9 @@ contract AccountEVM is Account {
     function sign (uint256 walletId, bytes32 digest)
         public view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (SignatureRSV memory)
     {
-        require(walletId < wallets.length, "Invalid wallet id");
 
         return EthereumUtils.sign(
             bytes32ToAddress(wallets[walletId]), 
@@ -79,6 +79,12 @@ contract AccountEVM is Account {
         _controllers[keypairAddress] = true;
 
         return keypairAddress;
+    }
+
+
+    function _afterRemoveWallet(bytes32 publicKey) internal override {
+        // remove from authorized controllers
+        _controllers[bytes32ToAddress(publicKey)] = false;
     }
 
     /**

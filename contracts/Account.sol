@@ -44,6 +44,14 @@ abstract contract Account {
         _;
     }
 
+    modifier onlyActiveWallet (uint256 walletId)
+    {
+        require(walletId < wallets.length, "Invalid wallet id");
+        require(wallets[walletId] != bytes32(0), "Wallet removed");
+
+        _;
+    }
+
     function modifyController(address who, bool status)
         public
         onlyByController
@@ -62,19 +70,40 @@ abstract contract Account {
     function walletAddress (uint256 walletId)
         public virtual view 
         onlyByController
+        onlyActiveWallet(walletId)
         returns (bytes32) 
     {
-        require(walletId < wallets.length, "Invalid wallet id");
         return wallets[walletId];
     }
 
     function exportPrivateKey (uint256 walletId)
         public virtual view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (bytes32)
     {
         return walletSecret[wallets[walletId]];
     }
+
+    function removeWallet (
+        uint256 walletId
+    )
+        external virtual
+        onlyByController
+        onlyActiveWallet(walletId)
+    {
+        bytes32 publicKey = wallets[walletId];
+
+        // Remove privateKey / secretKey
+        walletSecret[publicKey] = bytes32(0);
+        
+        // Remove publicKey from list
+        wallets[walletId] = bytes32(0);
+
+        _afterRemoveWallet(publicKey);
+    }
+
+    function _afterRemoveWallet(bytes32 publicKey) internal virtual {}
 
     function transfer (address in_target, uint256 amount)
         public virtual
