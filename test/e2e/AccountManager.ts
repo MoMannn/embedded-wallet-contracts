@@ -21,6 +21,10 @@ describe("AccountManager", function() {
   const GASLESS_TYPE_CREATE_ACCOUNT = 0;
   const GASLESS_TYPE_MANAGE_CREDENTIAL = 1;
   const GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD = 2;
+  const GASLESS_TYPE_ADD_WALLET = 3;
+  const GASLESS_TYPE_ADD_WALLET_PASSWORD = 4;
+  const GASLESS_TYPE_REMOVE_WALLET = 5;
+  const GASLESS_TYPE_REMOVE_WALLET_PASSWORD = 6;
 
   const CREDENTIAL_ACTION_ADD = 0;
   const CREDENTIAL_ACTION_REMOVE = 1;
@@ -1297,6 +1301,169 @@ describe("AccountManager", function() {
     credList = await WA.credentialIdsByUsername(username);
     expect(credList.length).to.equal(1);
     expect(credList[0]).to.equal(keyPair.credentialId);
+  });
+
+  it("Gasless add wallet with password", async function() {
+    const username = hashedUsername("testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+
+    // Gasless add wallet
+    // Gasless add wallet
+    // Gasless add wallet
+
+    const gasPrice = (await owner.provider.getFeeData()).gasPrice;
+    const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
+
+    const addWalletData = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const walletDataEncoded = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ addWalletData ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, walletDataEncoded],
+    );
+
+    const funcData = abiCoder.encode(
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: walletDataEncoded } ]
+    );
+
+    let gaslessData = abiCoder.encode(
+      [ "tuple(bytes funcData, uint8 txType)" ], 
+      [ 
+        {
+          funcData,
+          txType: GASLESS_TYPE_ADD_WALLET_PASSWORD
+        } 
+      ]
+    ); 
+
+    const timestamp = Math.ceil(new Date().getTime() / 1000) + 3600;
+    const dataHash = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint64', 'uint256', 'bytes32'],
+      [gasPrice, GAS_LIMIT, timestamp, ethers.keccak256(gaslessData)],
+    );
+    const signature = await signer.signMessage(ethers.getBytes(dataHash));
+
+    const signedTx = await WA.generateGaslessTx(
+      gaslessData,
+      nonce,
+      gasPrice,
+      GAS_LIMIT,
+      timestamp,
+      signature
+    );
+
+    const txHash = await owner.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // re-fetch account wallets
+    const accountWallets = await getAccountWallets(username);
+    
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+  });
+
+  it("Gasless remove wallet with password", async function() {
+    const username = hashedUsername("testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported
+    let accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+
+    // Gasless remove wallet
+    // Gasless remove wallet
+    // Gasless remove wallet
+
+    const gasPrice = (await owner.provider.getFeeData()).gasPrice;
+    const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
+
+    const walletDataEncoded = abiCoder.encode(
+      [ "uint256", "uint256" ], 
+      [ WALLET_TYPE_EVM, 1 /* walletId */ ]
+    );
+
+    digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, walletDataEncoded],
+    );
+
+    const funcData = abiCoder.encode(
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: walletDataEncoded } ]
+    );
+
+    let gaslessData = abiCoder.encode(
+      [ "tuple(bytes funcData, uint8 txType)" ], 
+      [ 
+        {
+          funcData,
+          txType: GASLESS_TYPE_REMOVE_WALLET_PASSWORD
+        } 
+      ]
+    ); 
+
+    const timestamp = Math.ceil(new Date().getTime() / 1000) + 3600;
+    const dataHash = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint64', 'uint256', 'bytes32'],
+      [gasPrice, GAS_LIMIT, timestamp, ethers.keccak256(gaslessData)],
+    );
+    const signature = await signer.signMessage(ethers.getBytes(dataHash));
+
+    const signedTx = await WA.generateGaslessTx(
+      gaslessData,
+      nonce,
+      gasPrice,
+      GAS_LIMIT,
+      timestamp,
+      signature
+    );
+
+    const txHash = await owner.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // re-fetch account wallets
+    accountWallets = await getAccountWallets(username);
+    
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
   });
 
   function hashedUsername (username) {
