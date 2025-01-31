@@ -1,6 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { secp256r1 } = require('@noble/curves/p256');
+const { u8aToHex } = require('@polkadot/util');
+const { sr25519PairFromSeed } = require('@polkadot/util-crypto');
 
 const { 
   SAPPHIRE_LOCALNET, 
@@ -10,7 +12,8 @@ const {
   GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD,
   GASLESS_TYPE_ADD_WALLET_PASSWORD,
   GASLESS_TYPE_REMOVE_WALLET_PASSWORD,
-  WALLET_TYPE_EVM
+  WALLET_TYPE_EVM,
+  WALLET_TYPE_SUBSTRATE
 } = require('./utils/constants');
 
 const { 
@@ -57,10 +60,6 @@ describe("AccountManager", function() {
       accountFactoryFactory.interface.encodeFunctionData('initialize', []),
     );
     await AFProxy.waitForDeployment();
-
-    // const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-    // const accountFactory = await accountFactoryFactory.deploy();
-    // await accountFactory.waitForDeployment();
 
     const contractFactory = await ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: await curveLibrary.getAddress()}});
     const proxyFactory = await ethers.getContractFactory('AccountManagerProxy');
@@ -132,20 +131,22 @@ describe("AccountManager", function() {
     expect(unlockedWallet.address).to.equal(accountData.publicKey);
   });
 
-  it("Import PK", async function() {
+  it("Import PK EVM, import PK Substrate", async function() {
     const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
 
+    // new EVM wallet
+    // new EVM wallet
+    // new EVM wallet
     const newWallet = ethers.Wallet.createRandom();
-    
-    const data = {
+    let data = {
       walletType: WALLET_TYPE_EVM,
       keypairSecret: newWallet.privateKey
     };
 
-    const encoded_data = abiCoder.encode(
+    let encoded_data = abiCoder.encode(
       [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
       [ data ]
     );
@@ -164,11 +165,45 @@ describe("AccountManager", function() {
     );
     await tx.wait();
 
-    // Check if wallet correctly imported
-    const accountWallets = await getAccountWallets(username);
+    // new SUBSTRATE wallet
+    // new SUBSTRATE wallet
+    // new SUBSTRATE wallet
+    const newSubstratePK = ethers.Wallet.createRandom().privateKey;
+    const newSubstrateWallet = sr25519PairFromSeed(newSubstratePK);
+    data = {
+      walletType: WALLET_TYPE_SUBSTRATE,
+      keypairSecret: newSubstratePK
+    };
 
-    expect(accountWallets[0]).to.equal(accountData.publicKey);
-    expect(accountWallets[1]).to.equal(newWallet.address);
+    encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported EVM
+    const accountWalletsEVM = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWalletsEVM.length).to.equal(2);
+    expect(accountWalletsEVM[0]).to.equal(accountData.publicKey);
+    expect(accountWalletsEVM[1]).to.equal(newWallet.address);
+
+    // Check if wallet correctly imported SUBSTRATE
+    const accountWalletsSUBSTRATE = await getAccountWallets(username, WALLET_TYPE_SUBSTRATE);
+    expect(accountWalletsSUBSTRATE.length).to.equal(1);
+    expect(accountWalletsSUBSTRATE[0]).to.equal(u8aToHex(newSubstrateWallet.publicKey));
 
     // Try to export, imported wallet
     const iface = new ethers.Interface(ACCOUNT_ABI);
@@ -219,7 +254,7 @@ describe("AccountManager", function() {
     await tx.wait();
 
     // Check if wallet correctly imported
-    let accountWallets = await getAccountWallets(username);
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
 
@@ -268,7 +303,7 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // Check if wallet correctly imported
-    accountWallets = await getAccountWallets(username);
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
@@ -1357,7 +1392,7 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // re-fetch account wallets
-    const accountWallets = await getAccountWallets(username);
+    const accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
     
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(newWallet.address);
@@ -1394,7 +1429,7 @@ describe("AccountManager", function() {
     await tx.wait();
 
     // Check if wallet correctly imported
-    let accountWallets = await getAccountWallets(username);
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(newWallet.address);
@@ -1451,7 +1486,7 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // re-fetch account wallets
-    accountWallets = await getAccountWallets(username);
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
     
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
@@ -1573,7 +1608,7 @@ describe("AccountManager", function() {
     return;
   }
 
-  async function getAccountWallets(username) {
+  async function getAccountWallets(username, walletType) {
     const iface = new ethers.Interface(ACCOUNT_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
@@ -1583,13 +1618,15 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, WALLET_TYPE_EVM, in_digest, in_data
+      username, walletType, in_digest, in_data
     );
 
     let [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
 
-    // convert from bytes32 to native address (checksumed)
-    accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`))
+    if (walletType == WALLET_TYPE_EVM) {
+      // convert from bytes32 to native address (checksumed)
+      accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`));
+    }
 
     return accountWallets;
   }

@@ -1,7 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { Keyring } = require("@polkadot/api");
-
 const { sr25519PairFromSeed } = require('@polkadot/util-crypto');
 const { u8aToHex } = require('@polkadot/util');
 
