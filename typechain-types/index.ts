@@ -58,6 +58,8 @@ export type { IAccount } from "./contracts/AccountManager.sol/IAccount";
 export { IAccount__factory } from "./factories/contracts/AccountManager.sol/IAccount__factory";
 export type { IAccountFactory } from "./contracts/AccountManager.sol/IAccountFactory";
 export { IAccountFactory__factory } from "./factories/contracts/AccountManager.sol/IAccountFactory__factory";
+export type { AccountSubstrate } from "./contracts/AccountSubstrate";
+export { AccountSubstrate__factory } from "./factories/contracts/AccountSubstrate__factory";
 export type { JWT } from "./contracts/lib/JWT";
 export { JWT__factory } from "./factories/contracts/lib/JWT__factory";
 export type { SECP256R1 } from "./contracts/lib/SECP256R1";

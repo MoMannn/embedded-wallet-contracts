@@ -21,13 +21,6 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export type WalletStruct = { keypairAddress: BytesLike; title: string };
-
-export type WalletStructOutput = [keypairAddress: string, title: string] & {
-  keypairAddress: string;
-  title: string;
-};
-
 export interface AccountInterface extends Interface {
   getFunction(
     nameOrSignature:
@@ -38,9 +31,9 @@ export interface AccountInterface extends Interface {
       | "init"
       | "isController"
       | "modifyController"
+      | "removeWallet"
       | "staticcall"
       | "transfer"
-      | "updateTitle"
       | "walletAddress"
   ): FunctionFragment;
 
@@ -50,7 +43,7 @@ export interface AccountInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createWallet",
-    values: [BytesLike, string]
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "exportPrivateKey",
@@ -62,7 +55,7 @@ export interface AccountInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "init",
-    values: [AddressLike, BytesLike, string]
+    values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "isController",
@@ -73,16 +66,16 @@ export interface AccountInterface extends Interface {
     values: [AddressLike, boolean]
   ): string;
   encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "staticcall",
     values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "transfer",
     values: [AddressLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "updateTitle",
-    values: [BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "walletAddress",
@@ -111,12 +104,12 @@ export interface AccountInterface extends Interface {
     functionFragment: "modifyController",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "updateTitle",
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "walletAddress",
     data: BytesLike
@@ -173,7 +166,7 @@ export interface Account extends BaseContract {
   >;
 
   createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
+    [keypairSecret: BytesLike],
     [string],
     "nonpayable"
   >;
@@ -184,10 +177,10 @@ export interface Account extends BaseContract {
     "view"
   >;
 
-  getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  getWalletList: TypedContractMethod<[], [string[]], "view">;
 
   init: TypedContractMethod<
-    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -200,6 +193,12 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   staticcall: TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
     [string],
@@ -208,12 +207,6 @@ export interface Account extends BaseContract {
 
   transfer: TypedContractMethod<
     [in_target: AddressLike, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  updateTitle: TypedContractMethod<
-    [walletId: BigNumberish, title: string],
     [void],
     "nonpayable"
   >;
@@ -237,21 +230,17 @@ export interface Account extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "createWallet"
-  ): TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
-    [string],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
   getFunction(
     nameOrSignature: "exportPrivateKey"
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "getWalletList"
-  ): TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  ): TypedContractMethod<[], [string[]], "view">;
   getFunction(
     nameOrSignature: "init"
   ): TypedContractMethod<
-    [initialController: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -266,6 +255,9 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "staticcall"
   ): TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
@@ -276,13 +268,6 @@ export interface Account extends BaseContract {
     nameOrSignature: "transfer"
   ): TypedContractMethod<
     [in_target: AddressLike, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "updateTitle"
-  ): TypedContractMethod<
-    [walletId: BigNumberish, title: string],
     [void],
     "nonpayable"
   >;

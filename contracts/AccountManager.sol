@@ -12,7 +12,6 @@ import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol
 import {EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
 
-import {Wallet} from "./Account.sol";
 import {WalletType} from "./AccountFactory.sol";
 import {WebAuthN,CosePublicKey,AuthenticatorResponse} from "./lib/WebAuthN.sol";
 
@@ -20,20 +19,17 @@ interface IAccountFactory {
     function clone (
         address starterOwner, 
         WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     ) external returns (address acct);
 }
 
 interface IAccount {
     function createWallet (
-        bytes32 keypairSecret,
-        string memory title
-    ) external returns (address);
+        bytes32 keypairSecret
+    ) external returns (bytes32);
 
-    function updateTitle (
-        uint256 walletId,
-        string memory title
+    function removeWallet (
+        uint256 walletId
     ) external;
 }
 
@@ -60,8 +56,8 @@ enum TxType {
     ManageCredentialPassword,
     AddWallet,
     AddWalletPassword,
-    UpdateTitle,
-    UpdateTitlePassword
+    RemoveWallet,
+    RemoveWalletPassword
 }
 
 enum CredentialAction {
@@ -98,7 +94,6 @@ struct NewAccount {
 struct WalletData {
     WalletType walletType;
     bytes32 keypairSecret; // if 0x000.. then generate new
-    string title;
 }
 
 contract AccountManagerStorage {
@@ -242,8 +237,7 @@ contract AccountManager is AccountManagerStorage,
             args.hashedUsername, 
             args.optionalPassword, 
             args.wallet.walletType,
-            args.wallet.keypairSecret,
-            args.wallet.title
+            args.wallet.keypairSecret
         );
 
         internal_addCredential(args.hashedUsername, args.credentialId, args.pubkey);
@@ -312,25 +306,25 @@ contract AccountManager is AccountManagerStorage,
     }
 
     /**
-     * @dev Update wallet title with credential
+     * @dev Remove wallet with credential
      *
      * @param args credential data
      */
-    function walletUpdateTitle (ActionCred memory args) 
+    function removeWallet (ActionCred memory args) 
         public 
     {
         bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
         User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
 
-        internal_walletUpdateTitle(user, args.data);
+        internal_removeWallet(user, args.data);
     }
 
     /**
-     * @dev Update wallet title with password
+     * @dev Remove wallet with password
      *
      * @param args credential data
      */
-    function walletUpdateTitlePassword (ActionPass memory args) 
+    function removeWalletPassword (ActionPass memory args) 
         public 
     {
         User memory user = internal_verifyPassword(
@@ -339,7 +333,7 @@ contract AccountManager is AccountManagerStorage,
             args.data
         );
 
-        internal_walletUpdateTitle(user, args.data);
+        internal_removeWallet(user, args.data);
     }
 
     /**
@@ -470,8 +464,7 @@ contract AccountManager is AccountManagerStorage,
         bytes32 in_hashedUsername, 
         bytes32 in_optionalPassword,
         WalletType walletType,
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         internal
         returns (User storage user)
@@ -493,8 +486,7 @@ contract AccountManager is AccountManagerStorage,
             accountFactory.clone(
                 address(this), 
                 walletType,
-                keypairSecret,
-                title
+                keypairSecret
             )
         );
     }
@@ -513,24 +505,22 @@ contract AccountManager is AccountManagerStorage,
                 user.username, 
                 bytes32(0), // skip password 
                 wallet.walletType,
-                wallet.keypairSecret,
-                wallet.title
+                wallet.keypairSecret
             );
         } else {
             // Add wallet to an existing account
-            account.createWallet(wallet.keypairSecret, wallet.title);
+            account.createWallet(wallet.keypairSecret);
         }
     }
 
-    function internal_walletUpdateTitle(
+    function internal_removeWallet(
         User memory user,
         bytes memory data
     ) internal {
         (
             uint256 walletType, 
-            uint256 walletId,
-            string memory title
-        ) = abi.decode(data, (uint256, uint256, string));
+            uint256 walletId
+        ) = abi.decode(data, (uint256, uint256));
 
         IAccount account = user.accounts[walletType];
         require(
@@ -538,7 +528,7 @@ contract AccountManager is AccountManagerStorage,
             "Account for this walletType not initialized"
         );
 
-        account.updateTitle(walletId, title);
+        account.removeWallet(walletId);
     }
 
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
@@ -704,7 +694,7 @@ contract AccountManager is AccountManagerStorage,
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredential) || 
             gaslessArgs.txType == uint8(TxType.AddWallet) ||
-            gaslessArgs.txType == uint8(TxType.UpdateTitle)
+            gaslessArgs.txType == uint8(TxType.RemoveWallet)
         ) {
             ActionCred memory args = abi.decode(gaslessArgs.funcData, (ActionCred));
 
@@ -712,8 +702,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredential(args);
             } else if (gaslessArgs.txType == uint8(TxType.AddWallet)) {
                 addWallet(args);
-            } else if (gaslessArgs.txType == uint8(TxType.UpdateTitle)) {
-                walletUpdateTitle(args);
+            } else if (gaslessArgs.txType == uint8(TxType.RemoveWallet)) {
+                removeWallet(args);
             }
             
             // Get user for emit event
@@ -722,7 +712,7 @@ contract AccountManager is AccountManagerStorage,
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredentialPassword) ||
             gaslessArgs.txType == uint8(TxType.AddWalletPassword) ||
-            gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)
+            gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)
         ) {
             ActionPass memory args = abi.decode(gaslessArgs.funcData, (ActionPass));
 
@@ -730,8 +720,8 @@ contract AccountManager is AccountManagerStorage,
                 manageCredentialPassword(args);
             } else if(gaslessArgs.txType == uint8(TxType.AddWalletPassword)) { 
                 addWalletPassword(args);
-            } else if(gaslessArgs.txType == uint8(TxType.UpdateTitlePassword)) { 
-                walletUpdateTitlePassword(args);
+            } else if(gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)) { 
+                removeWalletPassword(args);
             }
 
             // Get user for emit event
@@ -840,32 +830,53 @@ contract AccountManager is AccountManagerStorage,
         return (dataHash, receivedAddress == signer);
     }
 
-    event NewWallet(bytes32 addr, bytes32 key);
+    // Below only TEMP debug data !!!
+    // Below only TEMP debug data !!!
+    // Below only TEMP debug data !!!
+    // Below only TEMP debug data !!!
+    // event NewWallet(bytes32 addr, bytes32 key);
 
-    bytes32 public substrate_pk;
-    bytes public substrate_pk_bytes;
-    bytes32 public substrate_sk;
-    bytes public substrate_sk_bytes;
-    // string public substrate_sk_string;
+    // bytes32 public substrate_pk;
+    // bytes public substrate_pk_bytes;
+    // bytes32 public substrate_sk;
+    // bytes public substrate_sk_bytes;
+    
+    // bytes public substrate_test_sig;
 
-    function createSubstrate() external {
-        bytes memory randSeed = Sapphire.randomBytes(32, "");
+    // function createSubstrate() external {
+    //     bytes memory randSeed = Sapphire.randomBytes(32, "");
 
-        // bytes32 keypairSecret = 0x689fec26ad6e43b74e7185fe6145533d97245e7c8e074c4e8d8e2a02e263964f;
-        // bytes memory randSeed = abi.encodePacked(keypairSecret);
+    //     // bytes32 keypairSecret = 0x689fec26ad6e43b74e7185fe6145533d97245e7c8e074c4e8d8e2a02e263964f;
+    //     // bytes memory randSeed = abi.encodePacked(keypairSecret);
 
-        (bytes memory pk, bytes memory sk) = Sapphire.generateSigningKeyPair(
-            Sapphire.SigningAlg.Sr25519,
-            randSeed
-        );
+    //     (bytes memory pk, bytes memory sk) = Sapphire.generateSigningKeyPair(
+    //         Sapphire.SigningAlg.Sr25519,
+    //         randSeed
+    //     );
 
-        substrate_pk = bytes32(pk);
-        substrate_pk_bytes = pk;
+    //     substrate_pk = bytes32(pk);
+    //     substrate_pk_bytes = pk;
 
-        substrate_sk = bytes32(sk);
-        substrate_sk_bytes = sk;
-        // substrate_sk_string =  string(abi.encode(sk));
+    //     // substrate_sk = bytes32(sk);
+    //     substrate_sk = bytes32(randSeed);
+    //     // substrate_sk_bytes = sk;
+    //     substrate_sk_bytes = randSeed;
 
-        emit NewWallet(substrate_pk, substrate_sk);
-    }
+    //     // substrate_sk_string =  string(abi.encode(sk));
+
+    //     emit NewWallet(substrate_pk, substrate_sk);
+
+    //     // Sign data
+    //     bytes memory signature = Sapphire.sign(
+    //         Sapphire.SigningAlg.Sr25519,
+    //         abi.encodePacked(substrate_sk),
+    //         abi.encodePacked(bytes32(0)),
+    //         ""
+    //     );
+
+    //     // rsv = splitDERSignature(signature);
+    //     // recoverV(pubkeyAddr, digest, rsv);
+
+    //     // substrate_test_sig = signature;
+    // }
 }

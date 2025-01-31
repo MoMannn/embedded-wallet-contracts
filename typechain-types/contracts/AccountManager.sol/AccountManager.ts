@@ -89,14 +89,12 @@ export type CosePublicKeyStructOutput = [
 export type WalletDataStruct = {
   walletType: BigNumberish;
   keypairSecret: BytesLike;
-  title: string;
 };
 
 export type WalletDataStructOutput = [
   walletType: bigint,
-  keypairSecret: string,
-  title: string
-] & { walletType: bigint; keypairSecret: string; title: string };
+  keypairSecret: string
+] & { walletType: bigint; keypairSecret: string };
 
 export type NewAccountStruct = {
   hashedUsername: BytesLike;
@@ -155,6 +153,8 @@ export interface AccountManagerInterface extends Interface {
       | "proxiableUUID"
       | "proxyView"
       | "proxyViewPassword"
+      | "removeWallet"
+      | "removeWalletPassword"
       | "renounceRole"
       | "revokeRole"
       | "salt"
@@ -164,12 +164,11 @@ export interface AccountManagerInterface extends Interface {
       | "substrate_pk_bytes"
       | "substrate_sk"
       | "substrate_sk_bytes"
+      | "substrate_test_sig"
       | "supportsInterface"
       | "upgradeToAndCall"
       | "userExists"
       | "validateSignature"
-      | "walletUpdateTitle"
-      | "walletUpdateTitlePassword"
   ): FunctionFragment;
 
   getEvent(
@@ -279,6 +278,14 @@ export interface AccountManagerInterface extends Interface {
     values: [BytesLike, BigNumberish, BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [ActionCredStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "removeWalletPassword",
+    values: [ActionPassStruct]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, AddressLike]
   ): string;
@@ -309,6 +316,10 @@ export interface AccountManagerInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "substrate_test_sig",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
@@ -323,14 +334,6 @@ export interface AccountManagerInterface extends Interface {
   encodeFunctionData(
     functionFragment: "validateSignature",
     values: [BigNumberish, BigNumberish, BigNumberish, BytesLike, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "walletUpdateTitle",
-    values: [ActionCredStruct]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "walletUpdateTitlePassword",
-    values: [ActionPassStruct]
   ): string;
 
   decodeFunctionResult(
@@ -401,6 +404,14 @@ export interface AccountManagerInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "removeWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWalletPassword",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
   ): Result;
@@ -425,6 +436,10 @@ export interface AccountManagerInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "substrate_test_sig",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
   ): Result;
@@ -435,14 +450,6 @@ export interface AccountManagerInterface extends Interface {
   decodeFunctionResult(functionFragment: "userExists", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "validateSignature",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "walletUpdateTitle",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "walletUpdateTitlePassword",
     data: BytesLike
   ): Result;
 }
@@ -729,6 +736,18 @@ export interface AccountManager extends BaseContract {
     "view"
   >;
 
+  removeWallet: TypedContractMethod<
+    [args: ActionCredStruct],
+    [void],
+    "nonpayable"
+  >;
+
+  removeWalletPassword: TypedContractMethod<
+    [args: ActionPassStruct],
+    [void],
+    "nonpayable"
+  >;
+
   renounceRole: TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
@@ -752,6 +771,8 @@ export interface AccountManager extends BaseContract {
   substrate_sk: TypedContractMethod<[], [string], "view">;
 
   substrate_sk_bytes: TypedContractMethod<[], [string], "view">;
+
+  substrate_test_sig: TypedContractMethod<[], [string], "view">;
 
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
@@ -777,18 +798,6 @@ export interface AccountManager extends BaseContract {
     ],
     [[string, boolean]],
     "view"
-  >;
-
-  walletUpdateTitle: TypedContractMethod<
-    [args: ActionCredStruct],
-    [void],
-    "nonpayable"
-  >;
-
-  walletUpdateTitlePassword: TypedContractMethod<
-    [args: ActionPassStruct],
-    [void],
-    "nonpayable"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
@@ -916,6 +925,12 @@ export interface AccountManager extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "removeWalletPassword"
+  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "renounceRole"
   ): TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
@@ -951,6 +966,9 @@ export interface AccountManager extends BaseContract {
     nameOrSignature: "substrate_sk_bytes"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "substrate_test_sig"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
@@ -976,12 +994,6 @@ export interface AccountManager extends BaseContract {
     [[string, boolean]],
     "view"
   >;
-  getFunction(
-    nameOrSignature: "walletUpdateTitle"
-  ): TypedContractMethod<[args: ActionCredStruct], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "walletUpdateTitlePassword"
-  ): TypedContractMethod<[args: ActionPassStruct], [void], "nonpayable">;
 
   getEvent(
     key: "GaslessTransaction"

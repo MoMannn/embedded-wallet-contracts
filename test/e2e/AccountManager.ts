@@ -1,26 +1,25 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { pbkdf2Sync } = require("pbkdf2");
 const { secp256r1 } = require('@noble/curves/p256');
-const curve_utils = require('@noble/curves/abstract/utils');
 
-const SAPPHIRE_LOCALNET = 23293;
-const GAS_LIMIT = 1000000;
-const ACCOUNT_ABI = [
-  'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
-  'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
-  'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
-  'function getWalletList() view returns ((address keypairAddress, string title)[])',
-  'function walletAddress (uint256 walletId) view returns (address)',
-  'function updateTitle(uint256 walletId,string title)',
-];
+const { 
+  SAPPHIRE_LOCALNET, 
+  GAS_LIMIT,
+  ACCOUNT_ABI,
+  GASLESS_TYPE_CREATE_ACCOUNT,
+  GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD,
+  GASLESS_TYPE_ADD_WALLET_PASSWORD,
+  GASLESS_TYPE_REMOVE_WALLET_PASSWORD,
+  WALLET_TYPE_EVM
+} = require('./utils/constants');
+
+const { 
+  hashedUsername,
+  generateNewKeypair 
+} = require('./utils/helpers');
 
 describe("AccountManager", function() {
   let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress;
-
-  const GASLESS_TYPE_CREATE_ACCOUNT = 0;
-  const GASLESS_TYPE_MANAGE_CREDENTIAL = 1;
-  const GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD = 2;
 
   const CREDENTIAL_ACTION_ADD = 0;
   const CREDENTIAL_ACTION_REMOVE = 1;
@@ -31,10 +30,6 @@ describe("AccountManager", function() {
   const RANDOM_STRING  = "0x000000000000000000000000000000000000000000000000000000000000DEAD";
 
   const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-  const WALLET_TYPE_EVM = 0;
-  const WALLET_TYPE_SUBSTRATE = 1;
-  const WALLET_TYPE_BITCOIN = 2;
 
   const WALLET_IDX_0 = 0;
   const WALLET_IDX_1 = 1;
@@ -90,7 +85,7 @@ describe("AccountManager", function() {
   });
 
   it("Sign random string with new account", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
@@ -114,7 +109,7 @@ describe("AccountManager", function() {
   });
 
   it("Export PK of new account", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
@@ -138,7 +133,7 @@ describe("AccountManager", function() {
   });
 
   it("Import PK", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
@@ -147,12 +142,11 @@ describe("AccountManager", function() {
     
     const data = {
       walletType: WALLET_TYPE_EVM,
-      keypairSecret: newWallet.privateKey,
-      title: "Second wallet",
+      keypairSecret: newWallet.privateKey
     };
 
     const encoded_data = abiCoder.encode(
-      [ "tuple(uint256 walletType, bytes32 keypairSecret, string title)" ], 
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
       [ data ]
     );
 
@@ -173,8 +167,8 @@ describe("AccountManager", function() {
     // Check if wallet correctly imported
     const accountWallets = await getAccountWallets(username);
 
-    expect(accountWallets[0].keypairAddress).to.equal(accountData.publicKey);
-    expect(accountWallets[1].keypairAddress).to.equal(newWallet.address);
+    expect(accountWallets[0]).to.equal(accountData.publicKey);
+    expect(accountWallets[1]).to.equal(newWallet.address);
 
     // Try to export, imported wallet
     const iface = new ethers.Interface(ACCOUNT_ABI);
@@ -194,20 +188,19 @@ describe("AccountManager", function() {
     expect(exportedPrivateKey).to.equal(newWallet.privateKey);
   });
 
-  it("Update wallet", async function() {
-    const username = hashedUsername("testuser");
+  it("Remove wallet", async function() {
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const newWallet = ethers.Wallet.createRandom();
-    
+
     const data = {
       walletType: WALLET_TYPE_EVM,
-      keypairSecret: newWallet.privateKey,
-      title: "Second wallet",
+      keypairSecret: newWallet.privateKey
     };
 
     const encoded_data = abiCoder.encode(
-      [ "tuple(uint256 walletType, bytes32 keypairSecret, string title)" ], 
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
       [ data ]
     );
 
@@ -228,22 +221,26 @@ describe("AccountManager", function() {
     // Check if wallet correctly imported
     let accountWallets = await getAccountWallets(username);
 
-    expect(accountWallets[0].title).to.equal("Default wallet");
-    expect(accountWallets[1].title).to.equal("Second wallet");
+    expect(accountWallets.length).to.equal(2);
 
     // top-up wallet
     await owner.sendTransaction({
-      to: accountWallets[0].keypairAddress,
-      value: ethers.parseEther("0.1"), // Sends exactly 0.1 ether
+      to: accountWallets[0],
+      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
+    });
+
+    await owner.sendTransaction({
+      to: accountWallets[1],
+      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
     });
 
     const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
     const iface = new ethers.Interface(ACCOUNT_ABI);
-    const in_inner_data = iface.encodeFunctionData('updateTitle', [WALLET_IDX_1, "Updated wallet"]);;
+    let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
 
-    // Update second wallet
-    const txRequest = {
+    // Remove second wallet
+    let txRequest = {
       to: accountAddress,
       data: in_inner_data,
       gasLimit: 1000000,
@@ -252,19 +249,19 @@ describe("AccountManager", function() {
       chainId: SAPPHIRE_LOCALNET,
       gasPrice: 100000000000, // 100 gwei
     };
-    
-    const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
-    const in_digest = ethers.solidityPackedKeccak256(
+    let in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    let in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
       [SIMPLE_PASSWORD, in_data],
     );
 
-    const resp = await WA.proxyViewPassword(
+    let resp = await WA.proxyViewPassword(
       username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
-    const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+    let [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
     // Broadcast transaction
     const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
@@ -273,12 +270,69 @@ describe("AccountManager", function() {
     // Check if wallet correctly imported
     accountWallets = await getAccountWallets(username);
 
-    expect(accountWallets[0].title).to.equal("Default wallet");
-    expect(accountWallets[1].title).to.equal("Updated wallet");
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+
+    // Try removing already removed address
+    // Try removing already removed address
+    // Try removing already removed address
+    txRequest.nonce += 1;
+
+    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_EVM, in_digest, in_data
+    );
+
+    [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+
+    const txHashDupl = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const receiptDupl = await waitForTx(txHashDupl);
+
+    // The status of a transaction is 1 is successful or 0 if it was reverted. 
+    expect(receiptDupl.status).to.equal(0);
+
+    // Try performing transaction with removed account (remove wallet 0)
+    // Try performing transaction with removed account (remove wallet 0)
+    // Try performing transaction with removed account (remove wallet 0)
+    in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_0]);;
+
+    // Remove second wallet
+    txRequest = {
+      to: accountAddress,
+      data: in_inner_data,
+      gasLimit: 1000000,
+      value: 0,
+      nonce: 0,
+      chainId: SAPPHIRE_LOCALNET,
+      gasPrice: 100000000000, // 100 gwei
+    };
+
+    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_1, txRequest]);
+
+    in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    let shortMessage;
+    try{
+      resp = await WA.proxyViewPassword(
+        username, WALLET_TYPE_EVM, in_digest, in_data
+      );
+    } catch(e) {
+      shortMessage = e.shortMessage;
+    }
+    expect(shortMessage).to.equal('execution reverted: "Wallet removed"');
   });
 
   it("Register + preventing duplicates", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
@@ -297,7 +351,7 @@ describe("AccountManager", function() {
   it("Verify gasless signature", async function() {
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
 
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -353,7 +407,7 @@ describe("AccountManager", function() {
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
     const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
 
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -369,13 +423,12 @@ describe("AccountManager", function() {
       optionalPassword: SIMPLE_PASSWORD,
       wallet: {
         walletType: WALLET_TYPE_EVM,
-        keypairSecret: BYTES32_ZERO, // create new wallet
-        title: "Default wallet",
+        keypairSecret: BYTES32_ZERO // create new wallet
       }
     };
 
     let funcData = abiCoder.encode(
-      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, bytes32 optionalPassword, tuple(uint256 walletType, bytes32 keypairSecret, string title) wallet)" ], 
+      [ "tuple(bytes32 hashedUsername, bytes credentialId, tuple(uint8 kty, int8 alg, uint8 crv, uint256 x, uint256 y) pubkey, bytes32 optionalPassword, tuple(uint256 walletType, bytes32 keypairSecret) wallet)" ], 
       [ registerData ]
     ); 
 
@@ -415,7 +468,7 @@ describe("AccountManager", function() {
   });
 
   it("proxyView with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Fund new account
@@ -459,7 +512,7 @@ describe("AccountManager", function() {
   });
 
   it("proxyView with credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Fund new account
@@ -489,10 +542,10 @@ describe("AccountManager", function() {
   });
 
   it("proxyView FAIL with wrong credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
-    const usernameHacker = hashedUsername("hacker");
+    const usernameHacker = hashedUsername(SALT, "hacker");
     const accountDataHacker = await createAccount(usernameHacker, SIMPLE_PASSWORD);
 
     // Now try with no-ones PK
@@ -540,7 +593,7 @@ describe("AccountManager", function() {
   });
 
   it("Add additional credential with password + try proxyView with new credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     
     const keyPair = generateNewKeypair();
@@ -630,7 +683,7 @@ describe("AccountManager", function() {
   });
 
   it("Add additional credential with credential + try proxyView with new credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     
     const keyPair = generateNewKeypair();
@@ -727,7 +780,7 @@ describe("AccountManager", function() {
   });
 
   it("Gasless add credential to existing account with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
@@ -798,7 +851,7 @@ describe("AccountManager", function() {
   });
 
   it("Remove credential with password + try proxyView with old credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     let shortMessage = '';
     
@@ -970,7 +1023,7 @@ describe("AccountManager", function() {
   });
 
   it("Remove credential with credential + try proxyView with old credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     let shortMessage = '';
     
@@ -1135,7 +1188,7 @@ describe("AccountManager", function() {
   });
 
   it("Gasless remove credential from existing account with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Firstly add additional credential
@@ -1241,9 +1294,168 @@ describe("AccountManager", function() {
     expect(credList[0]).to.equal(keyPair.credentialId);
   });
 
-  function hashedUsername (username) {
-    return pbkdf2Sync(username, SALT, 100_000, 32, 'sha256');
-  }
+  it("Gasless add wallet with password", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+
+    // Gasless add wallet
+    // Gasless add wallet
+    // Gasless add wallet
+
+    const gasPrice = (await owner.provider.getFeeData()).gasPrice;
+    const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
+
+    const addWalletData = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const walletDataEncoded = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ addWalletData ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, walletDataEncoded],
+    );
+
+    const funcData = abiCoder.encode(
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: walletDataEncoded } ]
+    );
+
+    let gaslessData = abiCoder.encode(
+      [ "tuple(bytes funcData, uint8 txType)" ], 
+      [ 
+        {
+          funcData,
+          txType: GASLESS_TYPE_ADD_WALLET_PASSWORD
+        } 
+      ]
+    ); 
+
+    const timestamp = Math.ceil(new Date().getTime() / 1000) + 3600;
+    const dataHash = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint64', 'uint256', 'bytes32'],
+      [gasPrice, GAS_LIMIT, timestamp, ethers.keccak256(gaslessData)],
+    );
+    const signature = await signer.signMessage(ethers.getBytes(dataHash));
+
+    const signedTx = await WA.generateGaslessTx(
+      gaslessData,
+      nonce,
+      gasPrice,
+      GAS_LIMIT,
+      timestamp,
+      signature
+    );
+
+    const txHash = await owner.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // re-fetch account wallets
+    const accountWallets = await getAccountWallets(username);
+    
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+  });
+
+  it("Gasless remove wallet with password", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    const newWallet = ethers.Wallet.createRandom();
+
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported
+    let accountWallets = await getAccountWallets(username);
+
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+
+    // Gasless remove wallet
+    // Gasless remove wallet
+    // Gasless remove wallet
+
+    const gasPrice = (await owner.provider.getFeeData()).gasPrice;
+    const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
+
+    const walletDataEncoded = abiCoder.encode(
+      [ "uint256", "uint256" ], 
+      [ WALLET_TYPE_EVM, 1 /* walletId */ ]
+    );
+
+    digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, walletDataEncoded],
+    );
+
+    const funcData = abiCoder.encode(
+      [ "tuple(bytes32 hashedUsername, bytes32 digest, bytes data)" ], 
+      [ { hashedUsername: username, digest, data: walletDataEncoded } ]
+    );
+
+    let gaslessData = abiCoder.encode(
+      [ "tuple(bytes funcData, uint8 txType)" ], 
+      [ 
+        {
+          funcData,
+          txType: GASLESS_TYPE_REMOVE_WALLET_PASSWORD
+        } 
+      ]
+    ); 
+
+    const timestamp = Math.ceil(new Date().getTime() / 1000) + 3600;
+    const dataHash = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint64', 'uint256', 'bytes32'],
+      [gasPrice, GAS_LIMIT, timestamp, ethers.keccak256(gaslessData)],
+    );
+    const signature = await signer.signMessage(ethers.getBytes(dataHash));
+
+    const signedTx = await WA.generateGaslessTx(
+      gaslessData,
+      nonce,
+      gasPrice,
+      GAS_LIMIT,
+      timestamp,
+      signature
+    );
+
+    const txHash = await owner.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // re-fetch account wallets
+    accountWallets = await getAccountWallets(username);
+    
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+  });
 
   async function createAccount(username, password) {
     const keyPair = generateNewKeypair();
@@ -1261,8 +1473,7 @@ describe("AccountManager", function() {
       optionalPassword: password,
       wallet: {
         walletType: WALLET_TYPE_EVM,
-        keypairSecret: BYTES32_ZERO, // create new wallet
-        title: "Default wallet",
+        keypairSecret: BYTES32_ZERO // create new wallet
       }
     };
 
@@ -1281,7 +1492,10 @@ describe("AccountManager", function() {
       username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
-    const [publicKey] = iface.decodeFunctionResult('walletAddress', resp).toArray();
+    let [publicKey] = iface.decodeFunctionResult('walletAddress', resp).toArray();
+
+    // convert from bytes32 to native address (checksumed)
+    publicKey = ethers.getAddress(`0x${publicKey.slice(-40)}`);
 
     return {
       ...registerData,
@@ -1348,29 +1562,11 @@ describe("AccountManager", function() {
     return signedTx;
   }
 
-  function generateNewKeypair() {
-    const privateKey = secp256r1.utils.randomPrivateKey();
-    const pubKey = secp256r1.getPublicKey(privateKey, false);
-    const pubKeyString = "0x" + curve_utils.bytesToHex(pubKey);
-    const credentialId = abiCoder.encode([ "string" ], [ pubKeyString ]);
-
-    const coordsString = pubKeyString.slice(4, pubKeyString.length); // removes 0x04
-    const decoded_x = BigInt('0x' + coordsString.slice(0, 64)); // x is the first half
-    const decoded_y = BigInt('0x' + coordsString.slice(64, coordsString.length)); // y is the second half
-
-    return {
-      credentialId,
-      privateKey,
-      decoded_x,
-      decoded_y,
-    }
-  }
-
   async function waitForTx(txHash) {
     while(true) {
       const tx = await owner.provider.getTransactionReceipt(txHash);
       if (tx) {
-        break;
+        return tx;
       }
       await new Promise(f => setTimeout(f, 500));
     }
@@ -1390,7 +1586,10 @@ describe("AccountManager", function() {
       username, WALLET_TYPE_EVM, in_digest, in_data
     );
 
-    const [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
+    let [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
+
+    // convert from bytes32 to native address (checksumed)
+    accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`))
 
     return accountWallets;
   }

@@ -22,16 +22,16 @@ import type {
 
 export interface IAccountInterface extends Interface {
   getFunction(
-    nameOrSignature: "createWallet" | "updateTitle"
+    nameOrSignature: "createWallet" | "removeWallet"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "createWallet",
-    values: [BytesLike, string]
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "updateTitle",
-    values: [BigNumberish, string]
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
   ): string;
 
   decodeFunctionResult(
@@ -39,7 +39,7 @@ export interface IAccountInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "updateTitle",
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
 }
@@ -88,13 +88,13 @@ export interface IAccount extends BaseContract {
   ): Promise<this>;
 
   createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
+    [keypairSecret: BytesLike],
     [string],
     "nonpayable"
   >;
 
-  updateTitle: TypedContractMethod<
-    [walletId: BigNumberish, title: string],
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -105,18 +105,10 @@ export interface IAccount extends BaseContract {
 
   getFunction(
     nameOrSignature: "createWallet"
-  ): TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
-    [string],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
   getFunction(
-    nameOrSignature: "updateTitle"
-  ): TypedContractMethod<
-    [walletId: BigNumberish, title: string],
-    [void],
-    "nonpayable"
-  >;
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
 
   filters: {};
 }
