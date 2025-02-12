@@ -14,16 +14,27 @@ contract AccountSubstrate is Account {
         onlyActiveWallet(walletId)
         returns (bytes memory)
     {
+        bytes memory seed = abi.encodePacked(walletSecret[wallets[walletId]]);
+
+        (bytes memory pk, bytes memory sk) = Sapphire.generateSigningKeyPair(
+            Sapphire.SigningAlg.Sr25519,
+            seed
+        );
 
         bytes memory signature = Sapphire.sign(
             Sapphire.SigningAlg.Sr25519,
-            abi.encodePacked(walletSecret[wallets[walletId]]),
-            abi.encodePacked(digest),
-            ""
+            sk,
+            "substrate", // context or hash,
+            abi.encodePacked(digest) // data
         );
 
-        // rsv = splitDERSignature(signature);
-        // recoverV(pubkeyAddr, digest, rsv);
+        Sapphire.verify(
+            Sapphire.SigningAlg.Sr25519, 
+            pk, 
+            "substrate", // context or hash,
+            abi.encodePacked(digest), // data
+            signature
+        );
 
         return signature;
     }
