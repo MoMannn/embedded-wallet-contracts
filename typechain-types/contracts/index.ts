@@ -12,4 +12,3 @@ export type { test };
 export type { Account } from "./Account";
 export type { AccountEVM } from "./AccountEVM";
 export type { AccountFactory } from "./AccountFactory";
-export type { AccountFactoryBCKP } from "./AccountFactoryBCKP";

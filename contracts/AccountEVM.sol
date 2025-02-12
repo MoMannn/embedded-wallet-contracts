@@ -5,21 +5,20 @@ pragma solidity ^0.8.0;
 import {SignatureRSV, EthereumUtils} from "@oasisprotocol/sapphire-contracts/contracts/EthereumUtils.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
 import {Sapphire} from "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
-import {Account, Wallet} from "./Account.sol";
+import {Account} from "./Account.sol";
 
 contract AccountEVM is Account {
 
     function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
         public view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (bytes memory)
     {
-        require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
 
         return EIP155Signer.sign(
-            wal.keypairAddress, 
-            walletSecret[wal.keypairAddress], 
+            bytes32ToAddress(wallets[walletId]), 
+            walletSecret[wallets[walletId]], 
             txToSign
         );
     }
@@ -27,14 +26,13 @@ contract AccountEVM is Account {
     function sign (uint256 walletId, bytes32 digest)
         public view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (SignatureRSV memory)
     {
-        require(walletId < wallets.length, "Invalid wallet id");
-        Wallet memory wal = wallets[walletId];
 
         return EthereumUtils.sign(
-            wal.keypairAddress, 
-            walletSecret[wal.keypairAddress], 
+            bytes32ToAddress(wallets[walletId]), 
+            walletSecret[wallets[walletId]], 
             digest
         );
     }
@@ -43,8 +41,7 @@ contract AccountEVM is Account {
       * PRIVATE FUNCTIONS 
       */
     function _createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         internal override
         returns (address) 
@@ -69,21 +66,43 @@ contract AccountEVM is Account {
         }
 
         require(
-            walletSecret[keypairAddress] == bytes32(0), 
+            walletSecret[addressToBytes32(keypairAddress)] == bytes32(0), 
             "Wallet already imported"
         );
 
         wallets.push(
-            Wallet(
-                keypairAddress,
-                title
-            )
+            addressToBytes32(keypairAddress)
         );
 
-        walletSecret[keypairAddress] = keypairSecret;
+        walletSecret[addressToBytes32(keypairAddress)] = keypairSecret;
 
         _controllers[keypairAddress] = true;
 
         return keypairAddress;
     }
+
+
+    function _afterRemoveWallet(bytes32 publicKey) internal override {
+        // remove from authorized controllers
+        _controllers[bytes32ToAddress(publicKey)] = false;
+    }
+
+    /**
+     * @dev Converts an address to bytes32.
+     * @param _addr The address to convert.
+     * @return The bytes32 representation of the address.
+     */
+    function addressToBytes32(address _addr) public pure returns (bytes32) {
+        return bytes32(uint256(uint160(_addr)));
+    }
+
+    /**
+     * @dev Converts bytes32 to an address.
+     * @param _b The bytes32 value to convert.
+     * @return The address representation of bytes32.
+     */
+    function bytes32ToAddress(bytes32 _b) public pure returns (address) {
+        return address(uint160(uint256(_b)));
+    }
+
 }

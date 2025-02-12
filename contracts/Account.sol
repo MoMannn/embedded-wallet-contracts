@@ -2,19 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-struct Wallet {
-    address keypairAddress;
-    string title;
-}
-
 abstract contract Account {
     bool internal _initialized;
 
     mapping(address => bool) internal _controllers;
 
-    Wallet[] internal wallets;
+    bytes32[] internal wallets;
 
-    mapping(address => bytes32) internal walletSecret;
+    mapping(bytes32 => bytes32) internal walletSecret;
 
     constructor () {
         _initialized = true;
@@ -28,17 +23,16 @@ abstract contract Account {
     }
 
     function init (
-        address starterOwner, 
-        bytes32 keypairSecret,
-        string memory title
+        address initialController, 
+        bytes32 keypairSecret
     )
         public virtual
     {
         require( ! _initialized, "AlreadyInitialized" );
 
-        _controllers[starterOwner] = true;
+        _controllers[initialController] = true;
 
-        _createWallet(keypairSecret, title);
+        _createWallet(keypairSecret);
 
         _initialized = true;
     }
@@ -46,6 +40,14 @@ abstract contract Account {
     modifier onlyByController ()
     {
         require( _controllers[msg.sender] == true, "OnlyByController" );
+
+        _;
+    }
+
+    modifier onlyActiveWallet (uint256 walletId)
+    {
+        require(walletId < wallets.length, "Invalid wallet id");
+        require(wallets[walletId] != bytes32(0), "Wallet removed");
 
         _;
     }
@@ -60,7 +62,7 @@ abstract contract Account {
     function getWalletList ()
         public virtual view 
         onlyByController
-        returns (Wallet[] memory) 
+        returns (bytes32[] memory) 
     {
         return wallets;
     }
@@ -68,20 +70,40 @@ abstract contract Account {
     function walletAddress (uint256 walletId)
         public virtual view 
         onlyByController
-        returns (address) 
+        onlyActiveWallet(walletId)
+        returns (bytes32) 
     {
-        require(walletId < wallets.length, "Invalid wallet id");
-        return wallets[walletId].keypairAddress;
+        return wallets[walletId];
     }
 
     function exportPrivateKey (uint256 walletId)
         public virtual view
         onlyByController
+        onlyActiveWallet(walletId)
         returns (bytes32)
     {
-        Wallet memory wal = wallets[walletId];
-        return walletSecret[wal.keypairAddress];
+        return walletSecret[wallets[walletId]];
     }
+
+    function removeWallet (
+        uint256 walletId
+    )
+        external virtual
+        onlyByController
+        onlyActiveWallet(walletId)
+    {
+        bytes32 publicKey = wallets[walletId];
+
+        // Remove privateKey / secretKey
+        walletSecret[publicKey] = bytes32(0);
+        
+        // Remove publicKey from list
+        wallets[walletId] = bytes32(0);
+
+        _afterRemoveWallet(publicKey);
+    }
+
+    function _afterRemoveWallet(bytes32 publicKey) internal virtual {}
 
     function transfer (address in_target, uint256 amount)
         public virtual
@@ -117,33 +139,19 @@ abstract contract Account {
     }
 
     function createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     )
         external
         onlyByController
         returns (address) 
     {
-        return _createWallet(keypairSecret, title);
-    }
-
-    function updateTitle (
-        uint256 walletId,
-        string memory title
-    )
-        external virtual
-        onlyByController
-    {
-        require(walletId < wallets.length, "Invalid wallet id");
-        require(bytes(title).length > 0, "Title cannot be empty");
-        wallets[walletId].title = title;
+        return _createWallet(keypairSecret);
     }
 
     /**
       * PRIVATE FUNCTIONS 
       */
     function _createWallet (
-        bytes32 keypairSecret,
-        string memory title
+        bytes32 keypairSecret
     ) internal virtual returns (address);
 }

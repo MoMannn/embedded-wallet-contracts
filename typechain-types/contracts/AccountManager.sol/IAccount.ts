@@ -3,6 +3,7 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumberish,
   BytesLike,
   FunctionFragment,
   Result,
@@ -20,15 +21,25 @@ import type {
 } from "../../common";
 
 export interface IAccountInterface extends Interface {
-  getFunction(nameOrSignature: "createWallet"): FunctionFragment;
+  getFunction(
+    nameOrSignature: "createWallet" | "removeWallet"
+  ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "createWallet",
-    values: [BytesLike, string]
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
   ): string;
 
   decodeFunctionResult(
     functionFragment: "createWallet",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
 }
@@ -77,8 +88,14 @@ export interface IAccount extends BaseContract {
   ): Promise<this>;
 
   createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
+    [keypairSecret: BytesLike],
     [string],
+    "nonpayable"
+  >;
+
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
+    [void],
     "nonpayable"
   >;
 
@@ -88,11 +105,10 @@ export interface IAccount extends BaseContract {
 
   getFunction(
     nameOrSignature: "createWallet"
-  ): TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
-    [string],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
+  getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
 
   filters: {};
 }

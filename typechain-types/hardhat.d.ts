@@ -98,10 +98,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.AccountFactory__factory>;
     getContractFactory(
-      name: "AccountFactoryBCKP",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.AccountFactoryBCKP__factory>;
-    getContractFactory(
       name: "AccountManager",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.AccountManager__factory>;
@@ -288,11 +284,6 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.AccountFactory>;
     getContractAt(
-      name: "AccountFactoryBCKP",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.AccountFactoryBCKP>;
-    getContractAt(
       name: "AccountManager",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -477,10 +468,6 @@ declare module "hardhat/types/runtime" {
       name: "AccountFactory",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.AccountFactory>;
-    deployContract(
-      name: "AccountFactoryBCKP",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.AccountFactoryBCKP>;
     deployContract(
       name: "AccountManager",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -667,11 +654,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.AccountFactory>;
-    deployContract(
-      name: "AccountFactoryBCKP",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.AccountFactoryBCKP>;
     deployContract(
       name: "AccountManager",
       args: any[],

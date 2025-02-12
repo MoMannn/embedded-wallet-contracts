@@ -37,11 +37,6 @@ const _abi = [
         name: "keypairSecret",
         type: "bytes32",
       },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
     ],
     name: "createWallet",
     outputs: [
@@ -78,21 +73,9 @@ const _abi = [
     name: "getWalletList",
     outputs: [
       {
-        components: [
-          {
-            internalType: "address",
-            name: "keypairAddress",
-            type: "address",
-          },
-          {
-            internalType: "string",
-            name: "title",
-            type: "string",
-          },
-        ],
-        internalType: "struct Wallet[]",
+        internalType: "bytes32[]",
         name: "",
-        type: "tuple[]",
+        type: "bytes32[]",
       },
     ],
     stateMutability: "view",
@@ -102,18 +85,13 @@ const _abi = [
     inputs: [
       {
         internalType: "address",
-        name: "starterOwner",
+        name: "initialController",
         type: "address",
       },
       {
         internalType: "bytes32",
         name: "keypairSecret",
         type: "bytes32",
-      },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
       },
     ],
     name: "init",
@@ -154,6 +132,19 @@ const _abi = [
       },
     ],
     name: "modifyController",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "walletId",
+        type: "uint256",
+      },
+    ],
+    name: "removeWallet",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -207,31 +198,13 @@ const _abi = [
         name: "walletId",
         type: "uint256",
       },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
-    ],
-    name: "updateTitle",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "walletId",
-        type: "uint256",
-      },
     ],
     name: "walletAddress",
     outputs: [
       {
-        internalType: "address",
+        internalType: "bytes32",
         name: "",
-        type: "address",
+        type: "bytes32",
       },
     ],
     stateMutability: "view",

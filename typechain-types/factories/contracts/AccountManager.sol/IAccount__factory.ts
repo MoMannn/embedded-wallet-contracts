@@ -16,11 +16,6 @@ const _abi = [
         name: "keypairSecret",
         type: "bytes32",
       },
-      {
-        internalType: "string",
-        name: "title",
-        type: "string",
-      },
     ],
     name: "createWallet",
     outputs: [
@@ -30,6 +25,19 @@ const _abi = [
         type: "address",
       },
     ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "walletId",
+        type: "uint256",
+      },
+    ],
+    name: "removeWallet",
+    outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
