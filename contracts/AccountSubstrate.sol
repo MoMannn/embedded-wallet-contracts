@@ -8,7 +8,7 @@ import {Account} from "./Account.sol";
 
 contract AccountSubstrate is Account {
 
-    function sign (uint256 walletId, bytes32 digest)
+    function sign (uint256 walletId, bytes memory data)
         public view
         onlyByController
         onlyActiveWallet(walletId)
@@ -25,14 +25,14 @@ contract AccountSubstrate is Account {
             Sapphire.SigningAlg.Sr25519,
             sk,
             "substrate", // context or hash,
-            abi.encodePacked(digest) // data
+            data // data
         );
 
         Sapphire.verify(
             Sapphire.SigningAlg.Sr25519, 
             pk, 
             "substrate", // context or hash,
-            abi.encodePacked(digest), // data
+            data, // data
             signature
         );
 

@@ -6,7 +6,7 @@ const { u8aToHex, hexToU8a } = require('@polkadot/util');
 const { 
   SAPPHIRE_LOCALNET, 
   GAS_LIMIT,
-  ACCOUNT_ABI,
+  ACCOUNT_SUBSTRATE_ABI,
   WALLET_TYPE_EVM,
   WALLET_TYPE_SUBSTRATE
 } = require('./utils/constants');
@@ -25,7 +25,7 @@ const { Keyring } = require('@polkadot/keyring');
 const { GenericSignerPayload } = require('@polkadot/types');
 
 describe("Substrate", function() {
-  let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress;
+  let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress, SENDER_PAIR: any, keyring;
 
   const SIMPLE_PASSWORD = "0x0000000000000000000000000000000000000000000000000000000000000001";
   const WRONG_PASSWORD  = "0x0000000000000000000000000000000000000000000000000000009999999999";
@@ -38,6 +38,8 @@ describe("Substrate", function() {
   const WALLET_IDX_1 = 1;
 
   const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+  const SUBSTRATE_SEED = "0x4cea7f38eef57a59916a68b5cdbd20077a3c4a161a6c47cef8a2996c9067c7a9";
 
   beforeEach(async () => {
     [ owner, account1, account2, signer ] = await ethers.getSigners();
@@ -81,15 +83,19 @@ describe("Substrate", function() {
     });
 
     SALT = ethers.toBeArray(await WA.salt());
+
+    // Construct the keyring after the API (crypto has an async init)
+    keyring = new Keyring({ type: 'sr25519' });
+    SENDER_PAIR = keyring.addFromUri(SUBSTRATE_SEED);
   });
 
   it("Export PK of new account", async function() {
     const username = hashedUsername(SALT, "testuser");
-    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+    const accountData = await createAccount(username, SIMPLE_PASSWORD, BYTES32_ZERO);
 
     expect(await WA.userExists(username)).to.equal(true);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -109,7 +115,7 @@ describe("Substrate", function() {
 
   it("Import PK", async function() {
     const username = hashedUsername(SALT, "testuser");
-    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+    const accountData = await createAccount(username, SIMPLE_PASSWORD, BYTES32_ZERO);
 
     expect(await WA.userExists(username)).to.equal(true);
 
@@ -148,7 +154,7 @@ describe("Substrate", function() {
     expect(accountWallets[1]).to.equal(u8aToHex(newWallet.publicKey));
 
     // Try to export, imported wallet
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -165,104 +171,35 @@ describe("Substrate", function() {
     expect(exportedPrivateKey).to.equal(newWalletPK);
   });
 
-  it.only("Test substrate sign", async function() {
-    const seed = "0x4cea7f38eef57a59916a68b5cdbd20077a3c4a161a6c47cef8a2996c9067c7a9";
+  it("Sign extrinsic payload (transfer 0.0005 SBY) with funded wallet & execute on shibuya testnet", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD, SUBSTRATE_SEED);
 
-    const { block } = await rpcToLocalNode('chain_getBlock');
-    const blockHash = await rpcToLocalNode('chain_getBlockHash');
-    const genesisHash = await rpcToLocalNode('chain_getBlockHash', [0]);
-    const metadataRpc = await rpcToLocalNode('state_getMetadata');
-    const { specVersion, transactionVersion, specName } = await rpcToLocalNode(
-      'state_getRuntimeVersion',
-    );
+    expect(await WA.userExists(username)).to.equal(true);
 
-    const registry = getRegistry({
-      chainName: 'Westend',
-      specName,
-      specVersion,
-      metadataRpc,
-    });
-
-    const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
-
-    // Construct the keyring after the API (crypto has an async init)
-    const keyring = new Keyring({ type: 'sr25519' });
-    const alice = keyring.addFromUri(seed);
-
-    // const index = await api.rpc.system.accountNextIndex(alice.address);
-    const index = await rpcToLocalNode('system_accountNextIndex', [alice.address]);
-
-    const unsigned = methods.balances.transferAllowDeath(
-      {
-        value: '12345',
-        dest: { id: BOB }, // Bob
-      },
-      {
-        address: alice.address,
-        blockHash,
-        blockNumber: registry
-          .createType('BlockNumber', block.header.number)
-          .toNumber(),
-        eraPeriod: 4, // 64,
-        genesisHash,
-        metadataRpc,
-        nonce: index, // Assuming this is Alice's first tx on the chain
-        specVersion,
-        tip: 0,
-        transactionVersion,
-      },
-      {
-        metadataRpc,
-        registry,
-      },
-    );
-
-    // Decode an unsigned transaction.
-    const decodedUnsigned = decode(unsigned, {
+    const {
       metadataRpc,
       registry,
-    });
-    console.log(
-      `\nDecoded Transaction\n  To: ${
-        (decodedUnsigned.method.args.dest as { id: string })?.id
-      }\n` + `  Amount: ${JSON.stringify(decodedUnsigned.method.args.value)}`,
+      signingPayload,
+      unsigned
+    } = await prepareUnsignedPayload();
+
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
+    const in_data = iface.encodeFunctionData('sign', [WALLET_IDX_0, signingPayload]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
     );
 
-    // Construct the signing payload from an unsigned transaction.
-    let signingPayload = construct.signingPayload(unsigned, { registry });
-    // console.log(`\nPayload to Sign: ${signingPayload}`);
+    const resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_SUBSTRATE, in_digest, in_data
+    );
 
-    // fix payload trim first 2 characters
-    signingPayload = `0x${signingPayload.substring(4,signingPayload.length)}`;
-    console.log(`\nPayload to Sign: ${signingPayload}`);
+    let [signature] = iface.decodeFunctionResult('sign', resp).toArray();
 
-    // offchain sing
-    // const signatureOffchain = alice.sign(signingPayload, { withType: true });
-    // const signatureOffchain = alice.sign(signingPayload);
-    // console.log(`signatureOffchain:\n${u8aToHex(signatureOffchain)}`);
-
-    // oasis wallet sign
-    let resp = await WA.createSubstrate(seed, signingPayload);
-
-    // console.log(resp);
-    // process.exit();
-
-    let signature = resp.signature;
-
-    console.log(`Signature:\n${signature}`);
-    
     const sigWithType = `0x01${signature.substring(2, signature.length)}`;
-    // const sigWithType = `0x01${u8aToHex(signatureOffchain).substring(2, u8aToHex(signatureOffchain).length)}`;
-    // const sigWithType = u8aToHex(signatureOffchain);
-    console.log('sigWithType:');
-    console.log(sigWithType);
-
-    // signature = hexToU8a(signature);
     signature = hexToU8a(sigWithType);
-    // signature = signatureOffchain;
-
-    // console.log(`Signature: ${u8aToHex(signature)}`);
-    console.log('-----------------------');
 
     // Serialize a signed transaction.
     const tx = construct.signedTx(unsigned, signature, {
@@ -277,7 +214,7 @@ describe("Substrate", function() {
     expect(expectedTxHash).to.equal(actualTxHash);
   });
 
-  async function createAccount(username, password) {
+  async function createAccount(username, password, walletSeed) {
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -293,14 +230,14 @@ describe("Substrate", function() {
       optionalPassword: password,
       wallet: {
         walletType: WALLET_TYPE_SUBSTRATE,
-        keypairSecret: BYTES32_ZERO // create new wallet
+        keypairSecret: walletSeed // import existing wallet or create new if bytes32_zero
       }
     };
 
     const tx = await WA.createAccount(registerData);
     await tx.wait();
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
     const in_data = iface.encodeFunctionData('walletAddress', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -324,7 +261,7 @@ describe("Substrate", function() {
   }
 
   async function getAccountWallets(username) {
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -345,7 +282,8 @@ describe("Substrate", function() {
     method: string,
     params: any[] = [],
   ): Promise<any> {
-    return fetch('https://asset-hub-westend-rpc.dwellir.com', {
+    // return fetch('https://asset-hub-westend-rpc.dwellir.com', {
+    return fetch('https://rpc.shibuya.astar.network', {
       body: JSON.stringify({
         id: 1,
         jsonrpc: '2.0',
@@ -368,6 +306,74 @@ describe("Substrate", function() {
   
         return result;
       });
+  }
+
+  async function prepareUnsignedPayload(): Promise<any> {
+
+    // prepare raw transaciton
+
+    // sender
+    // publickey: 5GxmLBv2spqsU5Lm1LifRzix9aHYnuSrFJdMn3PZR8tHnwBg // assethub westend
+    // publickey: aqMmUt7f4UyguNbVeAnTetEEczfm89bGW8W1kbRHVtFPC7e // shibuya
+
+    // recipient
+    // const BOB = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty'; // assethub westend
+    const BOB = 'b8y3VagnT7sXX2oTvRAqeoyPRWzfaXQXXPJEpUV7teAjSfm'; // shibuya
+
+    const { block } = await rpcToLocalNode('chain_getBlock');
+    const blockHash = await rpcToLocalNode('chain_getBlockHash');
+    const genesisHash = await rpcToLocalNode('chain_getBlockHash', [0]);
+    const metadataRpc = await rpcToLocalNode('state_getMetadata');
+    const { specVersion, transactionVersion, specName } = await rpcToLocalNode(
+      'state_getRuntimeVersion',
+    );
+
+    const registry = getRegistry({
+      chainName: 'Westend',
+      specName,
+      specVersion,
+      metadataRpc,
+    });
+
+    const index = await rpcToLocalNode('system_accountNextIndex', [SENDER_PAIR.address]);
+
+    const unsigned = methods.balances.transferAllowDeath(
+      {
+        value: '500000000000000', // 0.0005 SBY
+        dest: { id: BOB }, // Bob
+      },
+      {
+        address: SENDER_PAIR.address,
+        blockHash,
+        blockNumber: registry
+          .createType('BlockNumber', block.header.number)
+          .toNumber(),
+        eraPeriod: 4, // 64,
+        genesisHash,
+        metadataRpc,
+        nonce: index, // Assuming this is Alice's first tx on the chain
+        specVersion,
+        tip: 0,
+        transactionVersion,
+      },
+      {
+        metadataRpc,
+        registry,
+      },
+    );
+
+    // Construct the signing payload from an unsigned transaction.
+    let signingPayload = construct.signingPayload(unsigned, { registry });
+
+    // fix payload trim first 2 characters -- otherwise it doesn't work
+    signingPayload = `0x${signingPayload.substring(4,signingPayload.length)}`;
+
+    return {
+      metadataRpc,
+      registry,
+      signingPayload,
+      unsigned
+    };
   }
   
 });

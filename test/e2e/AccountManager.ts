@@ -7,7 +7,7 @@ const { sr25519PairFromSeed } = require('@polkadot/util-crypto');
 const { 
   SAPPHIRE_LOCALNET, 
   GAS_LIMIT,
-  ACCOUNT_ABI,
+  ACCOUNT_EVM_ABI,
   GASLESS_TYPE_CREATE_ACCOUNT,
   GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD,
   GASLESS_TYPE_ADD_WALLET_PASSWORD,
@@ -89,7 +89,7 @@ describe("AccountManager", function() {
 
     expect(await WA.userExists(username)).to.equal(true);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('sign', [WALLET_IDX_0, RANDOM_STRING]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -113,7 +113,7 @@ describe("AccountManager", function() {
 
     expect(await WA.userExists(username)).to.equal(true);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -206,7 +206,7 @@ describe("AccountManager", function() {
     expect(accountWalletsSUBSTRATE[0]).to.equal(u8aToHex(newSubstrateWallet.publicKey));
 
     // Try to export, imported wallet
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -271,7 +271,7 @@ describe("AccountManager", function() {
 
     const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
 
     // Remove second wallet
@@ -525,7 +525,7 @@ describe("AccountManager", function() {
       gasPrice: 100000000000, // 100 gwei
     };
     
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -1515,7 +1515,7 @@ describe("AccountManager", function() {
     const tx = await WA.createAccount(registerData);
     await tx.wait();
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('walletAddress', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -1556,7 +1556,7 @@ describe("AccountManager", function() {
       gasPrice: 100000000000, // 100 gwei
     };
     
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     // Create & encode challange
@@ -1609,7 +1609,7 @@ describe("AccountManager", function() {
   }
 
   async function getAccountWallets(username, walletType) {
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
     const in_digest = ethers.solidityPackedKeccak256(

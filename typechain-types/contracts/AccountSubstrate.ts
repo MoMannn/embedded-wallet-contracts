@@ -206,7 +206,7 @@ export interface AccountSubstrate extends BaseContract {
   >;
 
   sign: TypedContractMethod<
-    [walletId: BigNumberish, digest: BytesLike],
+    [walletId: BigNumberish, data: BytesLike],
     [string],
     "view"
   >;
@@ -272,7 +272,7 @@ export interface AccountSubstrate extends BaseContract {
   getFunction(
     nameOrSignature: "sign"
   ): TypedContractMethod<
-    [walletId: BigNumberish, digest: BytesLike],
+    [walletId: BigNumberish, data: BytesLike],
     [string],
     "view"
   >;

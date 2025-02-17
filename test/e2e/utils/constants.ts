@@ -1,12 +1,21 @@
 export const SAPPHIRE_LOCALNET = 23293;
 export const GAS_LIMIT = 1000000;
 export const ACCOUNT_ABI = [
-  'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
-  'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
   'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
   'function getWalletList() view returns (bytes32[])',
   'function walletAddress (uint256 walletId) view returns (bytes32)',
   'function removeWallet(uint256 walletId)',
+];
+
+export const ACCOUNT_EVM_ABI = [
+  ...ACCOUNT_ABI,
+  'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
+  'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
+];
+
+export const ACCOUNT_SUBSTRATE_ABI = [
+  ...ACCOUNT_ABI,
+  'function sign(uint256 walletId, bytes data) view returns (bytes)',
 ];
 
 export const GASLESS_TYPE_CREATE_ACCOUNT = 0;
