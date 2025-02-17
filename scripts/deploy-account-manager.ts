@@ -1,6 +1,11 @@
 const hre = require("hardhat");
 
 async function main() {
+
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+
   const curveFactory = await hre.ethers.getContractFactory("SECP256R1Precompile");
   const curveLibrary = await curveFactory.deploy();
   await curveLibrary.waitForDeployment();
@@ -15,10 +20,6 @@ async function main() {
     accountFactoryFactory.interface.encodeFunctionData('initialize', []),
   );
   await AFProxy.waitForDeployment();
-
-  // const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-  // const accountFactory = await accountFactoryFactory.deploy();
-  // await accountFactory.waitForDeployment();
 
   const contractFactory = await hre.ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: await curveLibrary.getAddress()}});
   const proxyFactory = await hre.ethers.getContractFactory('AccountManagerProxy');

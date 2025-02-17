@@ -4,6 +4,10 @@ async function main() {
   // Get the owner account
   const [deployer] = await hre.ethers.getSigners();
 
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+  // DON'T FORGET TO COMMENT OUT sapphire-hardhat IN HARDHAT CONFIG !!!
+
   const accountManagerProxy = "0x50dE236a7ce372E7a09956087Fb4862CA1a887aA";
   const curveLibrary = "0x4c5D338Ed493fA3fDF0813ecA48dd45C6C85C7E2";
 
