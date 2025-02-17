@@ -4,8 +4,8 @@ async function main() {
   // Get the owner account
   const [deployer] = await hre.ethers.getSigners();
 
-  const accountManagerProxy = "0xe1D85Aa3449690185371193DD46D60c3DA9FC709";
-  const curveLibrary = "0x335E865F8F40e59D5AF3f6F85738962dD2D9aBEa";
+  const accountManagerProxy = "0x50dE236a7ce372E7a09956087Fb4862CA1a887aA";
+  const curveLibrary = "0x4c5D338Ed493fA3fDF0813ecA48dd45C6C85C7E2";
 
   const contractFactory = await hre.ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: curveLibrary}});
   const impl = await contractFactory.deploy();

@@ -1,4 +1,7 @@
+
+// When deploying, comment out sapphire-hardhat import, this way we can later verify contract
 import '@oasisprotocol/sapphire-hardhat';
+
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
@@ -38,7 +41,7 @@ const config: HardhatUserConfig = {
     sapphire: {
       url: 'https://sapphire.oasis.io',
       chainId: 0x5afe, // 23294
-      accounts: [privateKeyTestnet],
+      accounts: [privateKeyMainnet],
     },
     sapphireTestnet: {
       url: 'https://testnet.sapphire.oasis.dev',
