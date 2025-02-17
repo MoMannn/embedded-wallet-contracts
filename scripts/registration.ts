@@ -6,10 +6,12 @@ const { secp256r1 } = require('@noble/curves/p256');
 const curve_utils = require('@noble/curves/abstract/utils');
 const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
+const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
 async function main() {
 
   // DATA to be set
-  const accountManagerAddress = "0x2a9E1363D590a414C973029d476D4C9fe93d44E2";
+  const accountManagerAddress = "0x2D15A0B4d3d50B227eFa08Ed6a93c23222C995fb";
   const usernamePlain = "someUniqueUsername";
   const password = "0x0000000000000000000000000000000000000000000000000000000000000001";
   // Data to be set [END]
@@ -33,7 +35,11 @@ async function main() {
       x: keyPair.decoded_x,
       y: keyPair.decoded_y,
     },
-    optionalPassword: password
+    optionalPassword: password,
+    wallet: {
+      walletType: 0, // WALLET_TYPE_EVM,
+      keypairSecret: BYTES32_ZERO // create new wallet
+    }
   };
 
   const tx = await contract.createAccount(registerData);

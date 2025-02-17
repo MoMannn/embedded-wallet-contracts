@@ -143,7 +143,7 @@ abstract contract Account {
     )
         external
         onlyByController
-        returns (address) 
+        returns (bytes32) 
     {
         return _createWallet(keypairSecret);
     }
@@ -153,5 +153,5 @@ abstract contract Account {
       */
     function _createWallet (
         bytes32 keypairSecret
-    ) internal virtual returns (address);
+    ) internal virtual returns (bytes32);
 }

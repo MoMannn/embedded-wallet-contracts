@@ -44,7 +44,7 @@ contract AccountEVM is Account {
         bytes32 keypairSecret
     )
         internal override
-        returns (address) 
+        returns (bytes32) 
     {
         require(wallets.length < 100, "Max 100 wallets per account");
 
@@ -65,20 +65,20 @@ contract AccountEVM is Account {
             keypairAddress = EthereumUtils.k256PubkeyToEthereumAddress(pk);
         }
 
+        bytes32 keypairAddressB32 = addressToBytes32(keypairAddress);
+
         require(
-            walletSecret[addressToBytes32(keypairAddress)] == bytes32(0), 
+            walletSecret[keypairAddressB32] == bytes32(0), 
             "Wallet already imported"
         );
 
-        wallets.push(
-            addressToBytes32(keypairAddress)
-        );
+        wallets.push(keypairAddressB32);
 
-        walletSecret[addressToBytes32(keypairAddress)] = keypairSecret;
+        walletSecret[keypairAddressB32] = keypairSecret;
 
         _controllers[keypairAddress] = true;
 
-        return keypairAddress;
+        return keypairAddressB32;
     }
 
 

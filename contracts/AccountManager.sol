@@ -26,7 +26,7 @@ interface IAccountFactory {
 interface IAccount {
     function createWallet (
         bytes32 keypairSecret
-    ) external returns (address);
+    ) external returns (bytes32);
 
     function removeWallet (
         uint256 walletId
