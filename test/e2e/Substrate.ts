@@ -171,6 +171,31 @@ describe("Substrate", function() {
     expect(exportedPrivateKey).to.equal(newWalletPK);
   });
 
+  it("Sign & verify random bytes", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD, SUBSTRATE_SEED);
+
+    expect(await WA.userExists(username)).to.equal(true);
+
+    const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
+    const in_data = iface.encodeFunctionData('sign', [WALLET_IDX_0, RANDOM_STRING]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    const resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_SUBSTRATE, in_digest, in_data
+    );
+
+    let [signature] = iface.decodeFunctionResult('sign', resp).toArray();
+
+    const isValid = SENDER_PAIR.verify(RANDOM_STRING, signature, SENDER_PAIR.publicKey);
+
+    expect(isValid).to.equal(true);
+  });
+
   it("Sign extrinsic payload (transfer 0.0005 SBY) with funded wallet & execute on shibuya testnet", async function() {
     const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD, SUBSTRATE_SEED);
