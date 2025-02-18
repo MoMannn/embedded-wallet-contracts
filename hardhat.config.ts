@@ -6,8 +6,6 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 
-import "solidity-coverage";
-
 const { privateKeyMainnet, privateKeyTestnet, polygonAmoyRPC } = require("./secrets.json");
 
 // Hardhat Node and sapphireLocalnet test mnemonic.

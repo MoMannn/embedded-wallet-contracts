@@ -6,8 +6,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "build": "npx hardhat compile",
-    "flatten": "npx hardhat flatten",
-    "coverage": "npx hardhat coverage"
+    "flatten": "npx hardhat flatten"
   },
   "author": "Mitja Kjuder",
   "license": "ISC",
@@ -31,8 +30,7 @@
     "hardhat": "^2.17.0",
     "hardhat-abi-exporter": "^2.3.1",
     "hardhat-contract-sizer": "^2.1.1",
-    "pbkdf2": "^3.1.2",
-    "solidity-coverage": "^0.8.4"
+    "pbkdf2": "^3.1.2"
   },
   "dependencies": {
     "@oasisprotocol/sapphire-contracts": "^0.2.4",
