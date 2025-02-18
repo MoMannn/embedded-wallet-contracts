@@ -665,7 +665,7 @@ contract AccountManager is AccountManagerStorage,
             revert("Unsupported operation");
         }
 
-        emit GaslessTransaction(dataHash, user.username, address(user.accounts[0])); // EVM account
+        emit GaslessTransaction(dataHash, address(user.accounts[0])); // EVM account
     }
 
     /**

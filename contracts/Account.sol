@@ -16,6 +16,8 @@ abstract contract Account {
 
     mapping(bytes32 => bytes32) internal walletSecret;
 
+    event WalletCreate(bytes32 indexed publicAddress);
+
     constructor () {
         _initialized = true;
     }
@@ -211,9 +213,10 @@ abstract contract Account {
     )
         external
         onlyByController
-        returns (bytes32) 
+        returns (bytes32 publicAddress) 
     {
-        return _createWallet(keypairSecret);
+        publicAddress = _createWallet(keypairSecret);
+        emit WalletCreate(publicAddress);
     }
 
     /**
