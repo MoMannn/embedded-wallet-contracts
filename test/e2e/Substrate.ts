@@ -1,13 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { sr25519PairFromSeed, sr25519PairFromU8a } = require('@polkadot/util-crypto');
+const { sr25519PairFromSeed } = require('@polkadot/util-crypto');
 const { u8aToHex, hexToU8a } = require('@polkadot/util');
 
 const { 
-  SAPPHIRE_LOCALNET, 
-  GAS_LIMIT,
   ACCOUNT_SUBSTRATE_ABI,
-  WALLET_TYPE_EVM,
   WALLET_TYPE_SUBSTRATE
 } = require('./utils/constants');
 
@@ -15,14 +12,10 @@ const { hashedUsername, generateNewKeypair } = require('./utils/helpers');
 
 const {
   construct,
-  decode,
   getRegistry,
-  methods,
-  createMetadata
+  methods
 } = require('@substrate/txwrapper-polkadot');
-const { EXTRINSIC_VERSION } = require('@polkadot/types/extrinsic/v4/Extrinsic');
 const { Keyring } = require('@polkadot/keyring');
-const { GenericSignerPayload } = require('@polkadot/types');
 
 describe("Substrate", function() {
   let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress, SENDER_PAIR: any, keyring;

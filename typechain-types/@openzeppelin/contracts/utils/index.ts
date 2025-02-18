@@ -8,4 +8,5 @@ export type { introspection };
 import type * as math from "./math";
 export type { math };
 export type { Address } from "./Address";
+export type { Errors } from "./Errors";
 export type { Strings } from "./Strings";
