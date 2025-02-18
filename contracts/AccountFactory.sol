@@ -40,6 +40,13 @@ contract AccountFactory is CloneFactory,
 
     function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
+    /**
+     * @dev Clones account contract code to a new address
+     *
+     * @param starterOwner starter owner of account contract
+     * @param walletType Wallet type info
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function clone (
         address starterOwner,
         WalletType walletType,
