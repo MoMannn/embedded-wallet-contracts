@@ -110,6 +110,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.AccountManagerStorage__factory>;
     getContractFactory(
+      name: "AccountSubstrate",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.AccountSubstrate__factory>;
+    getContractFactory(
       name: "IAccount",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IAccount__factory>;
@@ -117,10 +121,6 @@ declare module "hardhat/types/runtime" {
       name: "IAccountFactory",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IAccountFactory__factory>;
-    getContractFactory(
-      name: "AccountSubstrate",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.AccountSubstrate__factory>;
     getContractFactory(
       name: "JWT",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -307,6 +307,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.AccountManagerStorage>;
     getContractAt(
+      name: "AccountSubstrate",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.AccountSubstrate>;
+    getContractAt(
       name: "IAccount",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -316,11 +321,6 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.IAccountFactory>;
-    getContractAt(
-      name: "AccountSubstrate",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.AccountSubstrate>;
     getContractAt(
       name: "JWT",
       address: string | ethers.Addressable,
@@ -499,6 +499,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.AccountManagerStorage>;
     deployContract(
+      name: "AccountSubstrate",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AccountSubstrate>;
+    deployContract(
       name: "IAccount",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IAccount>;
@@ -506,10 +510,6 @@ declare module "hardhat/types/runtime" {
       name: "IAccountFactory",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IAccountFactory>;
-    deployContract(
-      name: "AccountSubstrate",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.AccountSubstrate>;
     deployContract(
       name: "JWT",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -696,6 +696,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.AccountManagerStorage>;
     deployContract(
+      name: "AccountSubstrate",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AccountSubstrate>;
+    deployContract(
       name: "IAccount",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -705,11 +710,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IAccountFactory>;
-    deployContract(
-      name: "AccountSubstrate",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.AccountSubstrate>;
     deployContract(
       name: "JWT",
       args: any[],

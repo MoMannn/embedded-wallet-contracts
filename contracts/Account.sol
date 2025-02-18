@@ -2,6 +2,11 @@
 
 pragma solidity ^0.8.0;
 
+/**
+ * @dev Account contract serves as a skeleton and contains all parameters and functions
+ * that each chain account should have. Each chain type (EVM, Substrate, Bitcoin, etc...),
+ * should have its own contract extending this one.
+ */
 abstract contract Account {
     bool internal _initialized;
 
@@ -11,10 +16,17 @@ abstract contract Account {
 
     mapping(bytes32 => bytes32) internal walletSecret;
 
+    event WalletCreate(bytes32 indexed publicAddress);
+
     constructor () {
         _initialized = true;
     }
 
+    /**
+     * @dev Checks if an address is a controller
+     *
+     * @param who address to check
+     */
     function isController (address who)
         public view
         returns (bool)
@@ -22,6 +34,12 @@ abstract contract Account {
         return _controllers[who];
     }
 
+    /**
+     * @dev Initializes the account
+     *
+     * @param initialController initial controller
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function init (
         address initialController, 
         bytes32 keypairSecret
@@ -52,6 +70,12 @@ abstract contract Account {
         _;
     }
 
+    /**
+     * @dev Modifies a controller
+     *
+     * @param who address
+     * @param status true/false if whitelisted or not
+     */
     function modifyController(address who, bool status)
         public
         onlyByController
@@ -59,6 +83,9 @@ abstract contract Account {
         _controllers[who] = status;
     }
 
+    /**
+     * @dev Get wallet list linked to account contract
+     */
     function getWalletList ()
         public virtual view 
         onlyByController
@@ -67,6 +94,11 @@ abstract contract Account {
         return wallets;
     }
 
+    /**
+     * @dev Get wallet address
+     *
+     * @param walletId index in wallets list
+     */
     function walletAddress (uint256 walletId)
         public virtual view 
         onlyByController
@@ -76,6 +108,11 @@ abstract contract Account {
         return wallets[walletId];
     }
 
+    /**
+     * @dev Exports private/secret key
+     *
+     * @param walletId index in wallets list
+     */
     function exportPrivateKey (uint256 walletId)
         public virtual view
         onlyByController
@@ -85,6 +122,11 @@ abstract contract Account {
         return walletSecret[wallets[walletId]];
     }
 
+    /**
+     * @dev Remove wallet (all params are set to 0x0)
+     *
+     * @param walletId index in wallets list
+     */
     function removeWallet (
         uint256 walletId
     )
@@ -103,8 +145,19 @@ abstract contract Account {
         _afterRemoveWallet(publicKey);
     }
 
+    /**
+     * @dev After remove wallet hook
+     *
+     * @param publicKey public key of address being removed
+     */
     function _afterRemoveWallet(bytes32 publicKey) internal virtual {}
 
+    /**
+     * @dev Transfer function in case any ETH gets stuck in account contract
+     *
+     * @param in_target receipient
+     * @param amount amount to be sent
+     */
     function transfer (address in_target, uint256 amount)
         public virtual
         onlyByController
@@ -112,6 +165,12 @@ abstract contract Account {
         return payable(in_target).transfer(amount);
     }
 
+    /**
+     * @dev Low level call to be performed
+     *
+     * @param in_contract target contract
+     * @param in_data target data
+     */
     function call (address in_contract, bytes calldata in_data)
         public virtual
         onlyByController
@@ -125,6 +184,12 @@ abstract contract Account {
         }
     }
 
+    /**
+     * @dev Low level staticall to be performed
+     *
+     * @param in_contract target contract
+     * @param in_data target data
+     */
     function staticcall (address in_contract, bytes calldata in_data)
         public virtual view
         onlyByController
@@ -138,18 +203,24 @@ abstract contract Account {
         }
     }
 
+    /**
+     * @dev Create wallet
+     *
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function createWallet (
         bytes32 keypairSecret
     )
         external
         onlyByController
-        returns (bytes32) 
+        returns (bytes32 publicAddress) 
     {
-        return _createWallet(keypairSecret);
+        publicAddress = _createWallet(keypairSecret);
+        emit WalletCreate(publicAddress);
     }
 
     /**
-      * PRIVATE FUNCTIONS 
+      * @dev PRIVATE FUNCTIONS - to be integrated in account contract dedicated to specific chain
       */
     function _createWallet (
         bytes32 keypairSecret

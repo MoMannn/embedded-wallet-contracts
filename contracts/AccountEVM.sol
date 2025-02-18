@@ -9,6 +9,12 @@ import {Account} from "./Account.sol";
 
 contract AccountEVM is Account {
 
+    /**
+     * @dev Sign EIP155 transaction
+     *
+     * @param walletId wallet used to generate signature
+     * @param txToSign transaction data
+     */
     function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
         public view
         onlyByController
@@ -23,6 +29,12 @@ contract AccountEVM is Account {
         );
     }
 
+    /**
+     * @dev Sign bytes32 digest
+     *
+     * @param walletId wallet used to generate signature
+     * @param digest data to sign
+     */
     function sign (uint256 walletId, bytes32 digest)
         public view
         onlyByController
@@ -38,8 +50,10 @@ contract AccountEVM is Account {
     }
 
     /**
-      * PRIVATE FUNCTIONS 
-      */
+     * @dev Create wallet
+     *
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function _createWallet (
         bytes32 keypairSecret
     )

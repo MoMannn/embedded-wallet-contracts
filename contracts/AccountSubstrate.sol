@@ -8,6 +8,12 @@ import {Account} from "./Account.sol";
 
 contract AccountSubstrate is Account {
 
+    /**
+     * @dev Sign bytes data
+     *
+     * @param walletId wallet used to generate signature
+     * @param data data to sign
+     */
     function sign (uint256 walletId, bytes memory data)
         public view
         onlyByController
@@ -40,8 +46,10 @@ contract AccountSubstrate is Account {
     }
 
     /**
-      * PRIVATE FUNCTIONS 
-      */
+     * @dev Create wallet
+     *
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function _createWallet (
         bytes32 keypairSecret
     )

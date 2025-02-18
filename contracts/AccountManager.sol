@@ -14,144 +14,25 @@ import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Si
 
 import {WalletType} from "./AccountFactory.sol";
 import {WebAuthN,CosePublicKey,AuthenticatorResponse} from "./lib/WebAuthN.sol";
+import {IAccountFactory} from "./interfaces/IAccountFactory.sol";
+import {IAccount} from "./interfaces/IAccount.sol";
+import {AccountManagerStorage} from "./AccountManagerStorage.sol";
 
-interface IAccountFactory {
-    function clone (
-        address starterOwner, 
-        WalletType walletType,
-        bytes32 keypairSecret
-    ) external returns (address acct);
-}
+import {
+    UserCredential,
+    User,
+    GaslessData,
+    ActionCred,
+    ActionPass,
+    Credential,
+    NewAccount,
+    WalletData
+} from "./structs/Structs.sol";
 
-interface IAccount {
-    function createWallet (
-        bytes32 keypairSecret
-    ) external returns (bytes32);
-
-    function removeWallet (
-        uint256 walletId
-    ) external;
-}
-
-struct UserCredential {
-    uint256[2] pubkey;
-    bytes credentialId;
-    bytes32 username;
-}
-
-struct User {
-    bytes32 username;
-    bytes32 password;
-    IAccount[5] accounts; // 0=EVM, 1=SUBSTRATE, 2=BITCOIN, 3=TBD, 4=TBD, 5=TBD
-}
-
-struct GaslessData {
-    bytes funcData;
-    uint8 txType;
-}
-
-enum TxType {
-    CreateAccount,
-    ManageCredential,
-    ManageCredentialPassword,
-    AddWallet,
-    AddWalletPassword,
-    RemoveWallet,
-    RemoveWalletPassword
-}
-
-enum CredentialAction {
-    Add,
-    Remove
-}
-
-struct ActionCred {
-    bytes32 credentialIdHashed;
-    AuthenticatorResponse resp;
-    bytes data;
-}
-
-struct ActionPass {
-    bytes32 hashedUsername;
-    bytes32 digest;
-    bytes data;
-}
-
-struct Credential {
-    bytes credentialId;
-    CosePublicKey pubkey;
-    CredentialAction action;
-}
-
-struct NewAccount {
-    bytes32 hashedUsername;
-    bytes credentialId;
-    CosePublicKey pubkey;
-    bytes32 optionalPassword;
-    WalletData wallet;
-}
-
-struct WalletData {
-    WalletType walletType;
-    bytes32 keypairSecret; // if 0x000.. then generate new
-}
-
-contract AccountManagerStorage {
-
-    IAccountFactory internal accountFactory;
-
-    /**
-     * @dev user account mapping
-     */
-    mapping(bytes32 => User) internal users;
-
-    /**
-     * @dev username to credential list mapping
-     */
-    mapping(bytes32 => bytes32[]) internal usernameToHashedCredentialIdList;
-
-    /**
-     * @dev hashedCredential to credential
-     */
-    mapping(bytes32 => UserCredential) internal credentialsByHashedCredentialId;
-
-    /**
-     * @dev sapphire encription salt
-     */
-    bytes32 public salt;
-
-    /**
-     * @dev sapphire encription secret
-     */
-    bytes32 internal encryptionSecret;
-
-    /**
-     * @dev data used for chiper encription and webauthn challanges
-     */
-    bytes32 public personalization;
-
-    /**
-     * @dev address performing gasless transactions - public key
-     */
-    address public gaspayingAddress;
-
-    /**
-     * @dev address performing gasless transactions - private key
-     */
-    bytes32 internal gaspayingSecret;
-
-    /**
-     * @dev address signing on backend (for gasless transactions)
-     */
-    address public signer;
-
-    /**
-     * @dev hash usage mapping to prevent reuse of same hash multiple times
-     */
-    mapping(bytes32 => bool) public hashUsage;
-
-    event GaslessTransaction(bytes32 indexed dataHash, bytes32 indexed hashedUsername, address indexed publicAddress);
-}
+import {
+    TxType,
+    CredentialAction
+} from "./enums/Enums.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract AccountManager is AccountManagerStorage,
@@ -165,7 +46,12 @@ contract AccountManager is AccountManagerStorage,
         _disableInitializers();
     }
 
-    // Initializer instead of constructor
+    /**
+     * @dev Initialize contract
+     *
+     * @param _accountFactory account factory address
+     * @param _signer backend signer address
+     */
     function initialize(
         address _accountFactory,
         address _signer
@@ -182,7 +68,6 @@ contract AccountManager is AccountManagerStorage,
 
         (gaspayingAddress, gaspayingSecret) = EthereumUtils.generateKeypair();
 
-        // accountFactory = new AccountFactory();
         require(_accountFactory != address(0), "Zero address not allowed");
         accountFactory = IAccountFactory(_accountFactory);
 
@@ -361,6 +246,12 @@ contract AccountManager is AccountManagerStorage,
         }
     }
 
+    /**
+     * @dev Manage credential
+     *
+     * @param user user data
+     * @param data encoded credential data
+     */
     function internal_manageCredential(
         User memory user, 
         bytes memory data
@@ -378,6 +269,7 @@ contract AccountManager is AccountManagerStorage,
     }
 
     /**
+     * @dev Add credential to an existing account
      *
      * @param in_hashedUsername PBKDF2 hashed username
      * @param in_credentialId Raw credentialId provided by WebAuthN compatible authenticator
@@ -412,6 +304,7 @@ contract AccountManager is AccountManagerStorage,
     }
 
     /**
+     * @dev Remove credential from an account
      *
      * @param in_hashedUsername PBKDF2 hashed username
      * @param in_credentialId Raw credentialId provided by WebAuthN compatible authenticator
@@ -460,6 +353,14 @@ contract AccountManager is AccountManagerStorage,
         credentialList.pop();
     }
 
+    /**
+     * @dev Create new account
+     *
+     * @param in_hashedUsername PBKDF2 hashed username
+     * @param in_optionalPassword Optional password to access account
+     * @param walletType Wallet type info
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function internal_createAccount(
         bytes32 in_hashedUsername, 
         bytes32 in_optionalPassword,
@@ -491,6 +392,12 @@ contract AccountManager is AccountManagerStorage,
         );
     }
 
+    /**
+     * @dev Add wallet to an account
+     *
+     * @param user user data
+     * @param data encoded wallet data
+     */
     function internal_addWallet (
         User memory user, 
         bytes memory data
@@ -513,6 +420,12 @@ contract AccountManager is AccountManagerStorage,
         }
     }
 
+    /**
+     * @dev Remove wallet from an account
+     *
+     * @param user user data
+     * @param data encoded wallet data
+     */
     function internal_removeWallet(
         User memory user,
         bytes memory data
@@ -531,6 +444,11 @@ contract AccountManager is AccountManagerStorage,
         account.removeWallet(walletId);
     }
 
+    /**
+     * @dev Get credential and user
+     *
+     * @param in_credentialIdHashed Raw credentialId provided by WebAuthN compatible authenticator
+     */
     function internal_getCredentialAndUser (bytes32 in_credentialIdHashed)
         internal view
         returns (
@@ -544,6 +462,13 @@ contract AccountManager is AccountManagerStorage,
         require(credential.username != bytes32(0x0), "getCredentialAndUser");
     }
 
+    /**
+     * @dev Verify credential
+     *
+     * @param in_credentialIdHashed Raw credentialId provided by WebAuthN compatible authenticator
+     * @param in_challenge challange to verify
+     * @param in_resp reponse provided by WebAuthN compatible authenticator
+     */
     function internal_verifyCredential (
         bytes32 in_credentialIdHashed,
         bytes32 in_challenge,
@@ -564,6 +489,13 @@ contract AccountManager is AccountManagerStorage,
         return user;
     }
 
+    /**
+     * @dev Verify password
+     *
+     * @param hashedUsername PBKDF2 hashed username
+     * @param digest encoded (password + data)
+     * @param data data to be verified
+     */
     function internal_verifyPassword (
         bytes32 hashedUsername,
         bytes32 digest,
@@ -613,6 +545,7 @@ contract AccountManager is AccountManagerStorage,
      * @dev Performs a proxied call to the verified users account
      *
      * @param in_hashedUsername hashedUsername
+     * @param walletType wallet type to select account address
      * @param in_digest hashed(password + in_data)
      * @param in_data calldata to pass to account proxy
      * @return out_data result from proxied view call
@@ -640,6 +573,7 @@ contract AccountManager is AccountManagerStorage,
      *
      * @param in_credentialIdHashed credentialIdHashed
      * @param in_resp Authenticator response
+     * @param walletType wallet type to select account address
      * @param in_data calldata to pass to account proxy
      * @return out_data result from proxied view call
      */
@@ -662,8 +596,8 @@ contract AccountManager is AccountManagerStorage,
     /**
      * @dev Gasless transaction resolves here
      *
-     * @param ciphertext encrypted in_data
      * @param nonce nonce used to decrypt
+     * @param ciphertext encrypted in_data
      * @param timestamp validity expiration
      * @param dataHash keccak of data (used to parse emitted events on backend)
      */
@@ -731,7 +665,7 @@ contract AccountManager is AccountManagerStorage,
             revert("Unsupported operation");
         }
 
-        emit GaslessTransaction(dataHash, user.username, address(user.accounts[0])); // EVM account
+        emit GaslessTransaction(dataHash, address(user.accounts[0])); // EVM account
     }
 
     /**
