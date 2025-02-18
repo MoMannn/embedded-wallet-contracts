@@ -16,7 +16,7 @@ abstract contract Account {
 
     mapping(bytes32 => bytes32) internal walletSecret;
 
-    event WalletCreate(bytes32 indexed publicAddress);
+    event WalletCreated(bytes32 indexed publicAddress);
 
     constructor () {
         _initialized = true;
@@ -216,7 +216,7 @@ abstract contract Account {
         returns (bytes32 publicAddress) 
     {
         publicAddress = _createWallet(keypairSecret);
-        emit WalletCreate(publicAddress);
+        emit WalletCreated(publicAddress);
     }
 
     /**

@@ -39,7 +39,7 @@ export interface AccountInterface extends Interface {
       | "walletAddress"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "WalletCreate"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "WalletCreated"): EventFragment;
 
   encodeFunctionData(
     functionFragment: "call",
@@ -120,7 +120,7 @@ export interface AccountInterface extends Interface {
   ): Result;
 }
 
-export namespace WalletCreateEvent {
+export namespace WalletCreatedEvent {
   export type InputTuple = [publicAddress: BytesLike];
   export type OutputTuple = [publicAddress: string];
   export interface OutputObject {
@@ -292,23 +292,23 @@ export interface Account extends BaseContract {
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
 
   getEvent(
-    key: "WalletCreate"
+    key: "WalletCreated"
   ): TypedContractEvent<
-    WalletCreateEvent.InputTuple,
-    WalletCreateEvent.OutputTuple,
-    WalletCreateEvent.OutputObject
+    WalletCreatedEvent.InputTuple,
+    WalletCreatedEvent.OutputTuple,
+    WalletCreatedEvent.OutputObject
   >;
 
   filters: {
-    "WalletCreate(bytes32)": TypedContractEvent<
-      WalletCreateEvent.InputTuple,
-      WalletCreateEvent.OutputTuple,
-      WalletCreateEvent.OutputObject
+    "WalletCreated(bytes32)": TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
     >;
-    WalletCreate: TypedContractEvent<
-      WalletCreateEvent.InputTuple,
-      WalletCreateEvent.OutputTuple,
-      WalletCreateEvent.OutputObject
+    WalletCreated: TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
     >;
   };
 }

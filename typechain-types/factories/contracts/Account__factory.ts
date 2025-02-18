@@ -16,7 +16,7 @@ const _abi = [
         type: "bytes32",
       },
     ],
-    name: "WalletCreate",
+    name: "WalletCreated",
     type: "event",
   },
   {
