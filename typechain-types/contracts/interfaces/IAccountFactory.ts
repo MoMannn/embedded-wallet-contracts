@@ -3,8 +3,12 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumberish,
+  BytesLike,
   FunctionFragment,
+  Result,
   Interface,
+  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -14,15 +18,25 @@ import type {
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
-} from "../../../../common";
+  TypedContractMethod,
+} from "../../common";
 
-export interface MathInterface extends Interface {}
+export interface IAccountFactoryInterface extends Interface {
+  getFunction(nameOrSignature: "clone"): FunctionFragment;
 
-export interface Math extends BaseContract {
-  connect(runner?: ContractRunner | null): Math;
+  encodeFunctionData(
+    functionFragment: "clone",
+    values: [AddressLike, BigNumberish, BytesLike]
+  ): string;
+
+  decodeFunctionResult(functionFragment: "clone", data: BytesLike): Result;
+}
+
+export interface IAccountFactory extends BaseContract {
+  connect(runner?: ContractRunner | null): IAccountFactory;
   waitForDeployment(): Promise<this>;
 
-  interface: MathInterface;
+  interface: IAccountFactoryInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -61,9 +75,31 @@ export interface Math extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  clone: TypedContractMethod<
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike
+    ],
+    [string],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
+
+  getFunction(
+    nameOrSignature: "clone"
+  ): TypedContractMethod<
+    [
+      starterOwner: AddressLike,
+      walletType: BigNumberish,
+      keypairSecret: BytesLike
+    ],
+    [string],
+    "nonpayable"
+  >;
 
   filters: {};
 }

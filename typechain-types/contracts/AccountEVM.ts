@@ -8,6 +8,7 @@ import type {
   FunctionFragment,
   Result,
   Interface,
+  EventFragment,
   AddressLike,
   ContractRunner,
   ContractMethod,
@@ -17,6 +18,7 @@ import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
   TypedEventLog,
+  TypedLogDescription,
   TypedListener,
   TypedContractMethod,
 } from "../common";
@@ -82,6 +84,8 @@ export interface AccountEVMInterface extends Interface {
       | "transfer"
       | "walletAddress"
   ): FunctionFragment;
+
+  getEvent(nameOrSignatureOrTopic: "WalletCreated"): EventFragment;
 
   encodeFunctionData(
     functionFragment: "addressToBytes32",
@@ -186,6 +190,18 @@ export interface AccountEVMInterface extends Interface {
     functionFragment: "walletAddress",
     data: BytesLike
   ): Result;
+}
+
+export namespace WalletCreatedEvent {
+  export type InputTuple = [publicAddress: BytesLike];
+  export type OutputTuple = [publicAddress: string];
+  export interface OutputObject {
+    publicAddress: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export interface AccountEVM extends BaseContract {
@@ -383,5 +399,24 @@ export interface AccountEVM extends BaseContract {
     nameOrSignature: "walletAddress"
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
 
-  filters: {};
+  getEvent(
+    key: "WalletCreated"
+  ): TypedContractEvent<
+    WalletCreatedEvent.InputTuple,
+    WalletCreatedEvent.OutputTuple,
+    WalletCreatedEvent.OutputObject
+  >;
+
+  filters: {
+    "WalletCreated(bytes32)": TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
+    >;
+    WalletCreated: TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
+    >;
+  };
 }

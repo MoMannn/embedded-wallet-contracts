@@ -6,8 +6,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "build": "npx hardhat compile",
-    "flatten": "npx hardhat flatten",
-    "coverage": "npx hardhat coverage"
+    "flatten": "npx hardhat flatten"
   },
   "author": "Mitja Kjuder",
   "license": "ISC",
@@ -17,6 +16,8 @@
     "@nomicfoundation/hardhat-ethers": "^3.0.4",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@oasisprotocol/sapphire-hardhat": "^2.16.1",
+    "@polkadot/util-crypto": "^13.3.1",
+    "@substrate/txwrapper-polkadot": "^7.5.3",
     "@types/bn.js": "^5.1.1",
     "@types/elliptic": "^6.4.14",
     "@types/pbkdf2": "^3.1.0",
@@ -29,8 +30,7 @@
     "hardhat": "^2.17.0",
     "hardhat-abi-exporter": "^2.3.1",
     "hardhat-contract-sizer": "^2.1.1",
-    "pbkdf2": "^3.1.2",
-    "solidity-coverage": "^0.8.4"
+    "pbkdf2": "^3.1.2"
   },
   "dependencies": {
     "@oasisprotocol/sapphire-contracts": "^0.2.4",

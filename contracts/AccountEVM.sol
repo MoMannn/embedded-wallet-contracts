@@ -9,6 +9,12 @@ import {Account} from "./Account.sol";
 
 contract AccountEVM is Account {
 
+    /**
+     * @dev Sign EIP155 transaction
+     *
+     * @param walletId wallet used to generate signature
+     * @param txToSign transaction data
+     */
     function signEIP155 (uint256 walletId, EIP155Signer.EthTx calldata txToSign)
         public view
         onlyByController
@@ -23,6 +29,12 @@ contract AccountEVM is Account {
         );
     }
 
+    /**
+     * @dev Sign bytes32 digest
+     *
+     * @param walletId wallet used to generate signature
+     * @param digest data to sign
+     */
     function sign (uint256 walletId, bytes32 digest)
         public view
         onlyByController
@@ -38,13 +50,15 @@ contract AccountEVM is Account {
     }
 
     /**
-      * PRIVATE FUNCTIONS 
-      */
+     * @dev Create wallet
+     *
+     * @param keypairSecret private/secret key if importing an existing address (otherwise bytes32(0) to create new)
+     */
     function _createWallet (
         bytes32 keypairSecret
     )
         internal override
-        returns (address) 
+        returns (bytes32) 
     {
         require(wallets.length < 100, "Max 100 wallets per account");
 
@@ -65,20 +79,20 @@ contract AccountEVM is Account {
             keypairAddress = EthereumUtils.k256PubkeyToEthereumAddress(pk);
         }
 
+        bytes32 keypairAddressB32 = addressToBytes32(keypairAddress);
+
         require(
-            walletSecret[addressToBytes32(keypairAddress)] == bytes32(0), 
+            walletSecret[keypairAddressB32] == bytes32(0), 
             "Wallet already imported"
         );
 
-        wallets.push(
-            addressToBytes32(keypairAddress)
-        );
+        wallets.push(keypairAddressB32);
 
-        walletSecret[addressToBytes32(keypairAddress)] = keypairSecret;
+        walletSecret[keypairAddressB32] = keypairSecret;
 
         _controllers[keypairAddress] = true;
 
-        return keypairAddress;
+        return keypairAddressB32;
     }
 
 

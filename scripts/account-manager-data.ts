@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 async function main() {
   // DATA to be set
-  const accountManagerAddress = "0xe1D85Aa3449690185371193DD46D60c3DA9FC709";
+  const accountManagerAddress = "0x510518EBe8266fDF6858d2852ADA3bfE50988DAB";
   // Data to be set [END]
 
   const signer = (await hre.ethers.getSigners())[0];

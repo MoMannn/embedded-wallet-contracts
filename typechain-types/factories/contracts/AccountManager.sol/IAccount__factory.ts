@@ -20,9 +20,9 @@ const _abi = [
     name: "createWallet",
     outputs: [
       {
-        internalType: "address",
+        internalType: "bytes32",
         name: "",
-        type: "address",
+        type: "bytes32",
       },
     ],
     stateMutability: "nonpayable",

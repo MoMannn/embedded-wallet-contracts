@@ -8,6 +8,7 @@ import type {
   FunctionFragment,
   Result,
   Interface,
+  EventFragment,
   AddressLike,
   ContractRunner,
   ContractMethod,
@@ -17,18 +18,12 @@ import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
   TypedEventLog,
+  TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../common";
 
-export type WalletStruct = { keypairAddress: AddressLike; title: string };
-
-export type WalletStructOutput = [keypairAddress: string, title: string] & {
-  keypairAddress: string;
-  title: string;
-};
-
-export interface AccountInterface extends Interface {
+export interface AccountSubstrateInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "call"
@@ -38,11 +33,14 @@ export interface AccountInterface extends Interface {
       | "init"
       | "isController"
       | "modifyController"
+      | "removeWallet"
+      | "sign"
       | "staticcall"
       | "transfer"
-      | "updateTitle"
       | "walletAddress"
   ): FunctionFragment;
+
+  getEvent(nameOrSignatureOrTopic: "WalletCreated"): EventFragment;
 
   encodeFunctionData(
     functionFragment: "call",
@@ -50,7 +48,7 @@ export interface AccountInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createWallet",
-    values: [BytesLike, string]
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "exportPrivateKey",
@@ -62,7 +60,7 @@ export interface AccountInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "init",
-    values: [AddressLike, BytesLike, string]
+    values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "isController",
@@ -73,16 +71,20 @@ export interface AccountInterface extends Interface {
     values: [AddressLike, boolean]
   ): string;
   encodeFunctionData(
+    functionFragment: "removeWallet",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "sign",
+    values: [BigNumberish, BytesLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "staticcall",
     values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "transfer",
     values: [AddressLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "updateTitle",
-    values: [BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "walletAddress",
@@ -111,23 +113,36 @@ export interface AccountInterface extends Interface {
     functionFragment: "modifyController",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "updateTitle",
+    functionFragment: "removeWallet",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "sign", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "staticcall", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "walletAddress",
     data: BytesLike
   ): Result;
 }
 
-export interface Account extends BaseContract {
-  connect(runner?: ContractRunner | null): Account;
+export namespace WalletCreatedEvent {
+  export type InputTuple = [publicAddress: BytesLike];
+  export type OutputTuple = [publicAddress: string];
+  export interface OutputObject {
+    publicAddress: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export interface AccountSubstrate extends BaseContract {
+  connect(runner?: ContractRunner | null): AccountSubstrate;
   waitForDeployment(): Promise<this>;
 
-  interface: AccountInterface;
+  interface: AccountSubstrateInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -173,7 +188,7 @@ export interface Account extends BaseContract {
   >;
 
   createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
+    [keypairSecret: BytesLike],
     [string],
     "nonpayable"
   >;
@@ -184,10 +199,10 @@ export interface Account extends BaseContract {
     "view"
   >;
 
-  getWalletList: TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  getWalletList: TypedContractMethod<[], [string[]], "view">;
 
   init: TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -200,6 +215,18 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
 
+  removeWallet: TypedContractMethod<
+    [walletId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  sign: TypedContractMethod<
+    [walletId: BigNumberish, data: BytesLike],
+    [string],
+    "view"
+  >;
+
   staticcall: TypedContractMethod<
     [in_contract: AddressLike, in_data: BytesLike],
     [string],
@@ -208,12 +235,6 @@ export interface Account extends BaseContract {
 
   transfer: TypedContractMethod<
     [in_target: AddressLike, amount: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  updateTitle: TypedContractMethod<
-    [walletId: BigNumberish, title: string],
     [void],
     "nonpayable"
   >;
@@ -237,21 +258,17 @@ export interface Account extends BaseContract {
   >;
   getFunction(
     nameOrSignature: "createWallet"
-  ): TypedContractMethod<
-    [keypairSecret: BytesLike, title: string],
-    [string],
-    "nonpayable"
-  >;
+  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
   getFunction(
     nameOrSignature: "exportPrivateKey"
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "getWalletList"
-  ): TypedContractMethod<[], [WalletStructOutput[]], "view">;
+  ): TypedContractMethod<[], [string[]], "view">;
   getFunction(
     nameOrSignature: "init"
   ): TypedContractMethod<
-    [starterOwner: AddressLike, keypairSecret: BytesLike, title: string],
+    [initialController: AddressLike, keypairSecret: BytesLike],
     [void],
     "nonpayable"
   >;
@@ -264,6 +281,16 @@ export interface Account extends BaseContract {
     [who: AddressLike, status: boolean],
     [void],
     "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "removeWallet"
+  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "sign"
+  ): TypedContractMethod<
+    [walletId: BigNumberish, data: BytesLike],
+    [string],
+    "view"
   >;
   getFunction(
     nameOrSignature: "staticcall"
@@ -280,15 +307,27 @@ export interface Account extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "updateTitle"
-  ): TypedContractMethod<
-    [walletId: BigNumberish, title: string],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
     nameOrSignature: "walletAddress"
   ): TypedContractMethod<[walletId: BigNumberish], [string], "view">;
 
-  filters: {};
+  getEvent(
+    key: "WalletCreated"
+  ): TypedContractEvent<
+    WalletCreatedEvent.InputTuple,
+    WalletCreatedEvent.OutputTuple,
+    WalletCreatedEvent.OutputObject
+  >;
+
+  filters: {
+    "WalletCreated(bytes32)": TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
+    >;
+    WalletCreated: TypedContractEvent<
+      WalletCreatedEvent.InputTuple,
+      WalletCreatedEvent.OutputTuple,
+      WalletCreatedEvent.OutputObject
+    >;
+  };
 }

@@ -14,15 +14,15 @@ import type {
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
-} from "../common";
+} from "../../../../common";
 
-export interface AccountFactoryImplInterface extends Interface {}
+export interface SafeCastInterface extends Interface {}
 
-export interface AccountFactoryImpl extends BaseContract {
-  connect(runner?: ContractRunner | null): AccountFactoryImpl;
+export interface SafeCast extends BaseContract {
+  connect(runner?: ContractRunner | null): SafeCast;
   waitForDeployment(): Promise<this>;
 
-  interface: AccountFactoryImplInterface;
+  interface: SafeCastInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,

@@ -26,26 +26,10 @@ const _abi = [
     name: "AddressEmptyCode",
     type: "error",
   },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
-    ],
-    name: "AddressInsufficientBalance",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "FailedInnerCall",
-    type: "error",
-  },
 ] as const;
 
 const _bytecode =
-  "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea2646970667358221220ae75061e2d59708e9165a020013cc8956aeb3589f790a7050ad9564dcbdf645064736f6c63430008150033";
+  "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea264697066735822122097869b247dee6450e047b68f73d2f7790bfb981c410db1a6a1fdc06e183a9fb764736f6c63430008160033";
 
 type AddressConstructorParams =
   | [signer?: Signer]

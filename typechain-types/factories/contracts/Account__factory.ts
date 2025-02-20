@@ -7,6 +7,19 @@ import type { Account, AccountInterface } from "../../contracts/Account";
 
 const _abi = [
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "publicAddress",
+        type: "bytes32",
+      },
+    ],
+    name: "WalletCreated",
+    type: "event",
+  },
+  {
     inputs: [
       {
         internalType: "address",
@@ -41,9 +54,9 @@ const _abi = [
     name: "createWallet",
     outputs: [
       {
-        internalType: "address",
-        name: "",
-        type: "address",
+        internalType: "bytes32",
+        name: "publicAddress",
+        type: "bytes32",
       },
     ],
     stateMutability: "nonpayable",

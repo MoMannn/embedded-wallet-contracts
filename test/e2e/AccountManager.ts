@@ -1,30 +1,28 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { pbkdf2Sync } = require("pbkdf2");
 const { secp256r1 } = require('@noble/curves/p256');
-const curve_utils = require('@noble/curves/abstract/utils');
+const { u8aToHex } = require('@polkadot/util');
+const { sr25519PairFromSeed } = require('@polkadot/util-crypto');
 
-const SAPPHIRE_LOCALNET = 23293;
-const GAS_LIMIT = 1000000;
-const ACCOUNT_ABI = [
-  'function signEIP155(uint256 walletId, (uint64 nonce,uint256 gasPrice,uint64 gasLimit,address to,uint256 value,bytes data,uint256 chainId)) view returns (bytes)',
-  'function sign(uint256 walletId, bytes32 digest) view returns ((bytes32 r,bytes32 s,uint256 v))',
-  'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
-  'function getWalletList() view returns (bytes32[])',
-  'function walletAddress (uint256 walletId) view returns (bytes32)',
-  'function removeWallet(uint256 walletId)',
-];
+const { 
+  SAPPHIRE_LOCALNET, 
+  GAS_LIMIT,
+  ACCOUNT_EVM_ABI,
+  GASLESS_TYPE_CREATE_ACCOUNT,
+  GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD,
+  GASLESS_TYPE_ADD_WALLET_PASSWORD,
+  GASLESS_TYPE_REMOVE_WALLET_PASSWORD,
+  WALLET_TYPE_EVM,
+  WALLET_TYPE_SUBSTRATE
+} = require('./utils/constants');
+
+const { 
+  hashedUsername,
+  generateNewKeypair 
+} = require('./utils/helpers');
 
 describe("AccountManager", function() {
   let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress;
-
-  const GASLESS_TYPE_CREATE_ACCOUNT = 0;
-  const GASLESS_TYPE_MANAGE_CREDENTIAL = 1;
-  const GASLESS_TYPE_MANAGE_CREDENTIAL_PASSWORD = 2;
-  const GASLESS_TYPE_ADD_WALLET = 3;
-  const GASLESS_TYPE_ADD_WALLET_PASSWORD = 4;
-  const GASLESS_TYPE_REMOVE_WALLET = 5;
-  const GASLESS_TYPE_REMOVE_WALLET_PASSWORD = 6;
 
   const CREDENTIAL_ACTION_ADD = 0;
   const CREDENTIAL_ACTION_REMOVE = 1;
@@ -35,10 +33,6 @@ describe("AccountManager", function() {
   const RANDOM_STRING  = "0x000000000000000000000000000000000000000000000000000000000000DEAD";
 
   const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-  const WALLET_TYPE_EVM = 0;
-  const WALLET_TYPE_SUBSTRATE = 1;
-  const WALLET_TYPE_BITCOIN = 2;
 
   const WALLET_IDX_0 = 0;
   const WALLET_IDX_1 = 1;
@@ -67,10 +61,6 @@ describe("AccountManager", function() {
     );
     await AFProxy.waitForDeployment();
 
-    // const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-    // const accountFactory = await accountFactoryFactory.deploy();
-    // await accountFactory.waitForDeployment();
-
     const contractFactory = await ethers.getContractFactory("AccountManager", {libraries: {SECP256R1Precompile: await curveLibrary.getAddress()}});
     const proxyFactory = await ethers.getContractFactory('AccountManagerProxy');
   
@@ -94,12 +84,12 @@ describe("AccountManager", function() {
   });
 
   it("Sign random string with new account", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('sign', [WALLET_IDX_0, RANDOM_STRING]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -118,12 +108,12 @@ describe("AccountManager", function() {
   });
 
   it("Export PK of new account", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -141,20 +131,22 @@ describe("AccountManager", function() {
     expect(unlockedWallet.address).to.equal(accountData.publicKey);
   });
 
-  it("Import PK", async function() {
-    const username = hashedUsername("testuser");
+  it("Import PK EVM, import PK Substrate", async function() {
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
 
+    // new EVM wallet
+    // new EVM wallet
+    // new EVM wallet
     const newWallet = ethers.Wallet.createRandom();
-    
-    const data = {
+    let data = {
       walletType: WALLET_TYPE_EVM,
       keypairSecret: newWallet.privateKey
     };
 
-    const encoded_data = abiCoder.encode(
+    let encoded_data = abiCoder.encode(
       [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
       [ data ]
     );
@@ -173,14 +165,48 @@ describe("AccountManager", function() {
     );
     await tx.wait();
 
-    // Check if wallet correctly imported
-    const accountWallets = await getAccountWallets(username);
+    // new SUBSTRATE wallet
+    // new SUBSTRATE wallet
+    // new SUBSTRATE wallet
+    const newSubstratePK = ethers.Wallet.createRandom().privateKey;
+    const newSubstrateWallet = sr25519PairFromSeed(newSubstratePK);
+    data = {
+      walletType: WALLET_TYPE_SUBSTRATE,
+      keypairSecret: newSubstratePK
+    };
 
-    expect(accountWallets[0]).to.equal(accountData.publicKey);
-    expect(accountWallets[1]).to.equal(newWallet.address);
+    encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Check if wallet correctly imported EVM
+    const accountWalletsEVM = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWalletsEVM.length).to.equal(2);
+    expect(accountWalletsEVM[0]).to.equal(accountData.publicKey);
+    expect(accountWalletsEVM[1]).to.equal(newWallet.address);
+
+    // Check if wallet correctly imported SUBSTRATE
+    const accountWalletsSUBSTRATE = await getAccountWallets(username, WALLET_TYPE_SUBSTRATE);
+    expect(accountWalletsSUBSTRATE.length).to.equal(1);
+    expect(accountWalletsSUBSTRATE[0]).to.equal(u8aToHex(newSubstrateWallet.publicKey));
 
     // Try to export, imported wallet
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -198,7 +224,7 @@ describe("AccountManager", function() {
   });
 
   it("Remove wallet", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const newWallet = ethers.Wallet.createRandom();
@@ -228,7 +254,7 @@ describe("AccountManager", function() {
     await tx.wait();
 
     // Check if wallet correctly imported
-    let accountWallets = await getAccountWallets(username);
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
 
@@ -245,7 +271,7 @@ describe("AccountManager", function() {
 
     const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
 
     // Remove second wallet
@@ -277,7 +303,7 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // Check if wallet correctly imported
-    accountWallets = await getAccountWallets(username);
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
@@ -341,7 +367,7 @@ describe("AccountManager", function() {
   });
 
   it("Register + preventing duplicates", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     expect(await WA.userExists(username)).to.equal(true);
@@ -360,7 +386,7 @@ describe("AccountManager", function() {
   it("Verify gasless signature", async function() {
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
 
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -416,7 +442,7 @@ describe("AccountManager", function() {
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
     const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
 
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -477,7 +503,7 @@ describe("AccountManager", function() {
   });
 
   it("proxyView with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Fund new account
@@ -499,7 +525,7 @@ describe("AccountManager", function() {
       gasPrice: 100000000000, // 100 gwei
     };
     
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -521,7 +547,7 @@ describe("AccountManager", function() {
   });
 
   it("proxyView with credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Fund new account
@@ -551,10 +577,10 @@ describe("AccountManager", function() {
   });
 
   it("proxyView FAIL with wrong credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
-    const usernameHacker = hashedUsername("hacker");
+    const usernameHacker = hashedUsername(SALT, "hacker");
     const accountDataHacker = await createAccount(usernameHacker, SIMPLE_PASSWORD);
 
     // Now try with no-ones PK
@@ -602,7 +628,7 @@ describe("AccountManager", function() {
   });
 
   it("Add additional credential with password + try proxyView with new credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     
     const keyPair = generateNewKeypair();
@@ -692,7 +718,7 @@ describe("AccountManager", function() {
   });
 
   it("Add additional credential with credential + try proxyView with new credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     
     const keyPair = generateNewKeypair();
@@ -789,7 +815,7 @@ describe("AccountManager", function() {
   });
 
   it("Gasless add credential to existing account with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const gasPrice = (await owner.provider.getFeeData()).gasPrice;
@@ -860,7 +886,7 @@ describe("AccountManager", function() {
   });
 
   it("Remove credential with password + try proxyView with old credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     let shortMessage = '';
     
@@ -1032,7 +1058,7 @@ describe("AccountManager", function() {
   });
 
   it("Remove credential with credential + try proxyView with old credential", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
     let shortMessage = '';
     
@@ -1197,7 +1223,7 @@ describe("AccountManager", function() {
   });
 
   it("Gasless remove credential from existing account with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     // Firstly add additional credential
@@ -1304,7 +1330,7 @@ describe("AccountManager", function() {
   });
 
   it("Gasless add wallet with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const newWallet = ethers.Wallet.createRandom();
@@ -1366,14 +1392,14 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // re-fetch account wallets
-    const accountWallets = await getAccountWallets(username);
+    const accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
     
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(newWallet.address);
   });
 
   it("Gasless remove wallet with password", async function() {
-    const username = hashedUsername("testuser");
+    const username = hashedUsername(SALT, "testuser");
     const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
     const newWallet = ethers.Wallet.createRandom();
@@ -1403,7 +1429,7 @@ describe("AccountManager", function() {
     await tx.wait();
 
     // Check if wallet correctly imported
-    let accountWallets = await getAccountWallets(username);
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(newWallet.address);
@@ -1460,15 +1486,11 @@ describe("AccountManager", function() {
     await waitForTx(txHash);
 
     // re-fetch account wallets
-    accountWallets = await getAccountWallets(username);
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
     
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
   });
-
-  function hashedUsername (username) {
-    return pbkdf2Sync(username, SALT, 100_000, 32, 'sha256');
-  }
 
   async function createAccount(username, password) {
     const keyPair = generateNewKeypair();
@@ -1486,15 +1508,14 @@ describe("AccountManager", function() {
       optionalPassword: password,
       wallet: {
         walletType: WALLET_TYPE_EVM,
-        keypairSecret: BYTES32_ZERO, // create new wallet
-        title: "Default wallet",
+        keypairSecret: BYTES32_ZERO // create new wallet
       }
     };
 
     const tx = await WA.createAccount(registerData);
     await tx.wait();
 
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('walletAddress', [WALLET_IDX_0]);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -1535,7 +1556,7 @@ describe("AccountManager", function() {
       gasPrice: 100000000000, // 100 gwei
     };
     
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
     // Create & encode challange
@@ -1576,24 +1597,6 @@ describe("AccountManager", function() {
     return signedTx;
   }
 
-  function generateNewKeypair() {
-    const privateKey = secp256r1.utils.randomPrivateKey();
-    const pubKey = secp256r1.getPublicKey(privateKey, false);
-    const pubKeyString = "0x" + curve_utils.bytesToHex(pubKey);
-    const credentialId = abiCoder.encode([ "string" ], [ pubKeyString ]);
-
-    const coordsString = pubKeyString.slice(4, pubKeyString.length); // removes 0x04
-    const decoded_x = BigInt('0x' + coordsString.slice(0, 64)); // x is the first half
-    const decoded_y = BigInt('0x' + coordsString.slice(64, coordsString.length)); // y is the second half
-
-    return {
-      credentialId,
-      privateKey,
-      decoded_x,
-      decoded_y,
-    }
-  }
-
   async function waitForTx(txHash) {
     while(true) {
       const tx = await owner.provider.getTransactionReceipt(txHash);
@@ -1605,8 +1608,8 @@ describe("AccountManager", function() {
     return;
   }
 
-  async function getAccountWallets(username) {
-    const iface = new ethers.Interface(ACCOUNT_ABI);
+  async function getAccountWallets(username, walletType) {
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
     const in_digest = ethers.solidityPackedKeccak256(
@@ -1615,13 +1618,15 @@ describe("AccountManager", function() {
     );
 
     const resp = await WA.proxyViewPassword(
-      username, WALLET_TYPE_EVM, in_digest, in_data
+      username, walletType, in_digest, in_data
     );
 
     let [accountWallets] = iface.decodeFunctionResult('getWalletList', resp).toArray();
 
-    // convert from bytes32 to native address (checksumed)
-    accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`))
+    if (walletType == WALLET_TYPE_EVM) {
+      // convert from bytes32 to native address (checksumed)
+      accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`));
+    }
 
     return accountWallets;
   }
