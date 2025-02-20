@@ -4,7 +4,18 @@ This repo contains smart contracts that [Oasis] use.
 
 #### About AccountManager.sol contract
 
-The Account Manager is a smart contract that handles account creation, credential management, simple message signing, and transaction signing. Its goal is to manage accounts for all EVM-compatible chains, with the added option of exporting private keys for direct use in other EVM wallets.
+The Account Manager is a smart contract that handles account creation, credential management, simple message signing, and transaction signing. Its goal is to manage accounts for all EVM-compatible chains and substrate parachains, with the added option of exporting private keys for direct use in other wallet providers.
+
+### Architecture
+check `EW-diagram.pdf`
+
+## Flow examples
+
+### Create account
+AccountManager.sol > AccountFactory.sol > (AccountEVM.sol or AccountSubstrate.sol)
+
+### getWalletList, Sign message, Add/Remove wallet, Export privateKey, Sign transaction
+AccountManager.sol > Account.sol > (AccountEVM.sol or AccountSubstrate.sol)
 
 ## Development
 

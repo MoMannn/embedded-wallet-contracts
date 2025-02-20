@@ -31,7 +31,7 @@ async function main() {
     contractFactory.interface.encodeFunctionData(
       'initialize', [
         await AFProxy.getAddress(), // accountFactory
-        '0xC39e80f4f3624047CD46aF9E1892BEF3ee877132' // signer
+        '0x03f039b54373591B39d9524A5baA4dAa25A0B4E4' // signer
       ]
     ),
     { value: hre.ethers.parseEther('0.3') } // Value to be transfered to gaspaying address
