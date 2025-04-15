@@ -50,7 +50,8 @@ abstract contract Account {
 
         _controllers[initialController] = true;
 
-        _createWallet(keypairSecret);
+        bytes32 publicAddress = _createWallet(keypairSecret);
+        emit WalletCreated(publicAddress);
 
         _initialized = true;
     }
