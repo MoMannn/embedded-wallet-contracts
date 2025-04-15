@@ -76,6 +76,16 @@ Note: `usernamePlain` has to be unique. If the transaction fails verify that `si
 1. Set `accountManagerAddress` in `scripts/account-manager-data.ts`
 2. Run `npx hardhat run --network sapphireTestnet ./scripts/account-manager-data.ts`
 
+## Verify contract
+
+To verify on Sourcify.eth:
+
+- Select: Import from solidity JSON
+- Set compiler the same as hardhat.config
+- choose file: leave blank
+- In drag and drop section you select all JSON files inside embedded-wallet-contracts/artifacts/build-info
+- You wait for it to load then under each contract you set address and chain
+
 ## Helper scripts
 
 #### Output ABI in json format
