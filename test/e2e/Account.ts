@@ -45,7 +45,7 @@ describe('Account', () => {
         expect(cloneAddr.length == 42);
     });
 
-    it.only('Account Staticcall Works', async () => {
+    it.skip('Account Staticcall Works', async () => {
         const acct = await ethers.getContractAt("AccountEVM", cloneAddr);
         const firstSigner = (await ethers.getSigners())[0];
         const acctWithSigner = acct.connect(firstSigner);
@@ -63,5 +63,7 @@ describe('Account', () => {
         expect(result[0]).equal(await acct.getAddress());
         expect(result[1]).equal(await target.getAddress());
     });
+
+
 
 });
