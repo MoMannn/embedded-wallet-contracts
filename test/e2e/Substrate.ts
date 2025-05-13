@@ -18,7 +18,7 @@ const {
 const { Keyring } = require('@polkadot/keyring');
 
 describe("Substrate", function() {
-  let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress, SENDER_PAIR: any, keyring;
+  let WA: any, SALT: any, HELPER: any, owner: any, account1: any, account2: any, signer: any, gaspayingAddress: any, SENDER_PAIR: any, keyring: any;
 
   const SIMPLE_PASSWORD = "0x0000000000000000000000000000000000000000000000000000000000000001";
   const WRONG_PASSWORD  = "0x0000000000000000000000000000000000000000000000000000009999999999";
@@ -37,16 +37,16 @@ describe("Substrate", function() {
   beforeEach(async () => {
     [ owner, account1, account2, signer ] = await ethers.getSigners();
     
-    const helpFactory = await hre.ethers.getContractFactory("TestHelper");
+    const helpFactory = await ethers.getContractFactory("TestHelper");
     HELPER = await helpFactory.deploy();
     await HELPER.waitForDeployment();
 
-    const curveFactory = await hre.ethers.getContractFactory("SECP256R1Precompile");
+    const curveFactory = await ethers.getContractFactory("SECP256R1Precompile");
     const curveLibrary = await curveFactory.deploy();
     await curveLibrary.waitForDeployment();
 
-    const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-    const accountFactoryProxyFactory = await hre.ethers.getContractFactory("AccountFactoryProxy");
+    const accountFactoryFactory = await ethers.getContractFactory("AccountFactory");
+    const accountFactoryProxyFactory = await ethers.getContractFactory("AccountFactoryProxy");
     const accountFactoryImpl = await accountFactoryFactory.deploy();
     await accountFactoryImpl.waitForDeployment();
 
@@ -232,7 +232,7 @@ describe("Substrate", function() {
     expect(expectedTxHash).to.equal(actualTxHash);
   });
 
-  async function createAccount(username, password, walletSeed) {
+  async function createAccount(username: any, password: any, walletSeed: any) {
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -278,7 +278,7 @@ describe("Substrate", function() {
     }
   }
 
-  async function getAccountWallets(username) {
+  async function getAccountWallets(username: any) {
     const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
