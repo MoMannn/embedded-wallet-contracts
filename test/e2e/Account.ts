@@ -65,5 +65,15 @@ describe('Account', () => {
     });
 
 
+    it('Account Modifier Works', async () => {
+        const acct = await ethers.getContractAt("AccountEVM", cloneAddr);
+        const acctWithSigner = acct.connect((await ethers.getSigners())[0]);
+
+        expect(await acct.isController((await ethers.getSigners())[1].getAddress())).equal(false);
+        await acctWithSigner.modifyController((await ethers.getSigners())[1].getAddress(), true);
+        expect(await acct.isController((await ethers.getSigners())[1].getAddress())).equal(true);
+
+        expect(await acctWithSigner.modifyController(ethers.ZeroAddress, true)).to.be.revertedWith("Invalid address");
+    });
 
 });

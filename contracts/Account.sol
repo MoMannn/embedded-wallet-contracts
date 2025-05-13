@@ -81,6 +81,7 @@ abstract contract Account {
         public
         onlyByController
     {
+        require(who != address(0), "Invalid address");
         _controllers[who] = status;
     }
 
