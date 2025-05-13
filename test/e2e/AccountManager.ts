@@ -22,7 +22,7 @@ const {
 } = require('./utils/helpers');
 
 describe("AccountManager", function() {
-  let WA, SALT, HELPER, owner, account1, account2, signer, gaspayingAddress;
+  let WA: any, SALT: any, HELPER: any, owner: any, account1: any, account2: any, signer: any, gaspayingAddress: any ;
 
   const CREDENTIAL_ACTION_ADD = 0;
   const CREDENTIAL_ACTION_REMOVE = 1;
@@ -42,16 +42,16 @@ describe("AccountManager", function() {
   beforeEach(async () => {
     [ owner, account1, account2, signer ] = await ethers.getSigners();
     
-    const helpFactory = await hre.ethers.getContractFactory("TestHelper");
+    const helpFactory = await ethers.getContractFactory("TestHelper");
     HELPER = await helpFactory.deploy();
     await HELPER.waitForDeployment();
 
-    const curveFactory = await hre.ethers.getContractFactory("SECP256R1Precompile");
+    const curveFactory = await ethers.getContractFactory("SECP256R1Precompile");
     const curveLibrary = await curveFactory.deploy();
     await curveLibrary.waitForDeployment();
 
-    const accountFactoryFactory = await hre.ethers.getContractFactory("AccountFactory");
-    const accountFactoryProxyFactory = await hre.ethers.getContractFactory("AccountFactoryProxy");
+    const accountFactoryFactory = await ethers.getContractFactory("AccountFactory");
+    const accountFactoryProxyFactory = await ethers.getContractFactory("AccountFactoryProxy");
     const accountFactoryImpl = await accountFactoryFactory.deploy();
     await accountFactoryImpl.waitForDeployment();
 
@@ -127,7 +127,7 @@ describe("AccountManager", function() {
 
     const [exportedPrivateKey] = iface.decodeFunctionResult('exportPrivateKey', resp).toArray();
 
-    const unlockedWallet = new hre.ethers.Wallet(exportedPrivateKey);
+    const unlockedWallet = new ethers.Wallet(exportedPrivateKey);
     expect(unlockedWallet.address).to.equal(accountData.publicKey);
   });
 
@@ -299,7 +299,7 @@ describe("AccountManager", function() {
     let [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
     // Check if wallet correctly imported
@@ -326,7 +326,7 @@ describe("AccountManager", function() {
 
     [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
-    const txHashDupl = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHashDupl = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     const receiptDupl = await waitForTx(txHashDupl);
 
     // The status of a transaction is 1 is successful or 0 if it was reverted. 
@@ -360,10 +360,10 @@ describe("AccountManager", function() {
       resp = await WA.proxyViewPassword(
         username, WALLET_TYPE_EVM, in_digest, in_data
       );
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('execution reverted: "Wallet removed"');
+    expect(shortMessage).to.have.string('execution reverted: Wallet removed');
   });
 
   it("Register + preventing duplicates", async function() {
@@ -378,8 +378,8 @@ describe("AccountManager", function() {
     // Try creating another user with same username
     try {
       await createAccount(username, SIMPLE_PASSWORD);
-    } catch(e) {
-      expect(e.shortMessage).to.equal("transaction execution reverted");
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
     }
   });
 
@@ -512,7 +512,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     // Create raw transaction
     const txRequest = {
@@ -540,10 +540,10 @@ describe("AccountManager", function() {
     const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
   });
 
   it("proxyView with credential", async function() {
@@ -556,7 +556,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     const signedTx = await generateSignedTxWithCredential(
       accountData.publicKey, 
@@ -570,10 +570,10 @@ describe("AccountManager", function() {
     );
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
   });
 
   it("proxyView FAIL with wrong credential", async function() {
@@ -604,10 +604,10 @@ describe("AccountManager", function() {
           value: ethers.parseEther("0.005"),
         }
       );
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('execution reverted: "getCredentialAndUser"');
+    expect(shortMessage).to.have.string('execution reverted: getCredentialAndUser');
 
     shortMessage = "";
     try {
@@ -621,10 +621,10 @@ describe("AccountManager", function() {
           value: ethers.parseEther("0.005"),
         }
       );
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('execution reverted: "verification failed"');
+    expect(shortMessage).to.have.string('execution reverted: verification failed');
   });
 
   it("Add additional credential with password + try proxyView with new credential", async function() {
@@ -665,8 +665,8 @@ describe("AccountManager", function() {
         }
       );
       await tx_wrong.wait();
-    } catch(e) {
-      expect(e.shortMessage).to.equal("transaction execution reverted");
+    } catch(e: any ) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
     }
 
     // Now try with correct password
@@ -697,7 +697,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     const signedTx = await generateSignedTxWithCredential(
       accountData.publicKey, 
@@ -711,10 +711,10 @@ describe("AccountManager", function() {
     );
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
   });
 
   it("Add additional credential with credential + try proxyView with new credential", async function() {
@@ -794,7 +794,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     const signedTx = await generateSignedTxWithCredential(
       accountData.publicKey, 
@@ -808,10 +808,10 @@ describe("AccountManager", function() {
     );
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
   });
 
   it("Gasless add credential to existing account with password", async function() {
@@ -924,8 +924,8 @@ describe("AccountManager", function() {
         }
       );
       await tx_wrong.wait();
-    } catch(e) {
-      expect(e.shortMessage).to.equal("transaction execution reverted");
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
     }
 
     // Now try with correct password
@@ -956,7 +956,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     const signedTx = await generateSignedTxWithCredential(
       accountData.publicKey, 
@@ -970,10 +970,10 @@ describe("AccountManager", function() {
     );
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
 
     // Remove default credential (added with registration)
     data.credentialId = accountData.credentials[0].credentialId;
@@ -1018,10 +1018,10 @@ describe("AccountManager", function() {
           value: ethers.parseEther("0.005"),
         }
       );
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('execution reverted: "getCredentialAndUser"');
+    expect(shortMessage).to.have.string('execution reverted: getCredentialAndUser');
 
     // Try to remove last credential
     shortMessage = '';
@@ -1051,10 +1051,10 @@ describe("AccountManager", function() {
       );
 
       await tx.wait();
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('transaction execution reverted');
+    expect(shortMessage).to.have.string('transaction execution reverted');
   });
 
   it("Remove credential with credential + try proxyView with old credential", async function() {
@@ -1096,8 +1096,8 @@ describe("AccountManager", function() {
         }
       );
       await tx_wrong.wait();
-    } catch(e) {
-      expect(e.shortMessage).to.equal("transaction execution reverted");
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
     }
 
     // Now try with correct password
@@ -1128,7 +1128,7 @@ describe("AccountManager", function() {
       value: ethers.parseEther("0.5"),
     });
 
-    const balanceBefore = await hre.ethers.provider.getBalance(account1.address);
+    const balanceBefore = await ethers.provider.getBalance(account1.address);
 
     const signedTx = await generateSignedTxWithCredential(
       accountData.publicKey, 
@@ -1142,10 +1142,10 @@ describe("AccountManager", function() {
     );
 
     // Broadcast transaction
-    const txHash = await hre.ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
     await waitForTx(txHash);
 
-    expect(await hre.ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
+    expect(await ethers.provider.getBalance(account1.address)).to.equal(balanceBefore + ethers.parseEther("0.005"));
 
     // Remove default credential (added with registration)
     data.credentialId = accountData.credentials[0].credentialId;
@@ -1216,10 +1216,10 @@ describe("AccountManager", function() {
           value: ethers.parseEther("0.005"),
         }
       );
-    } catch(e) {
-      shortMessage = e.shortMessage;
+    } catch(e: any) {
+      shortMessage = e.toString();
     }
-    expect(shortMessage).to.equal('execution reverted: "getCredentialAndUser"');
+    expect(shortMessage).to.have.string('execution reverted: getCredentialAndUser');
   });
 
   it("Gasless remove credential from existing account with password", async function() {
@@ -1492,7 +1492,7 @@ describe("AccountManager", function() {
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
   });
 
-  async function createAccount(username, password) {
+  async function createAccount(username: any, password: any) {
     const keyPair = generateNewKeypair();
 
     let registerData = {
@@ -1541,7 +1541,7 @@ describe("AccountManager", function() {
     }
   }
 
-  async function generateSignedTxWithCredential(senderAddress, credentialId, credentialPK, req) {
+  async function generateSignedTxWithCredential(senderAddress: any, credentialId: any, credentialPK: any, req: any) {
     const personalization = await WA.personalization();
     const credentialIdHashed = ethers.keccak256(credentialId);
 
@@ -1597,7 +1597,7 @@ describe("AccountManager", function() {
     return signedTx;
   }
 
-  async function waitForTx(txHash) {
+  async function waitForTx(txHash: any) {
     while(true) {
       const tx = await owner.provider.getTransactionReceipt(txHash);
       if (tx) {
@@ -1608,7 +1608,7 @@ describe("AccountManager", function() {
     return;
   }
 
-  async function getAccountWallets(username, walletType) {
+  async function getAccountWallets(username: any, walletType: any) {
     const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
     const in_data = iface.encodeFunctionData('getWalletList', []);
 
@@ -1625,7 +1625,7 @@ describe("AccountManager", function() {
 
     if (walletType == WALLET_TYPE_EVM) {
       // convert from bytes32 to native address (checksumed)
-      accountWallets = accountWallets.map(x => ethers.getAddress(`0x${x.slice(-40)}`));
+      accountWallets = accountWallets.map((x: any) => ethers.getAddress(`0x${x.slice(-40)}`));
     }
 
     return accountWallets;
