@@ -266,148 +266,139 @@ describe("AccountManager", function() {
     expect(exportedPrivateKey).to.equal(newWallet.privateKey);
   });
 
-  it("Remove wallet", async function() {
-    const username = hashedUsername(SALT, "testuser");
-    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+  // Cannot remove wallet via the wallets private key anymore
+  // it("Remove wallet", async function() {
+  //   const username = hashedUsername(SALT, "testuser");
+  //   const accountData = await createAccount(username, SIMPLE_PASSWORD);
 
-    const newWallet = ethers.Wallet.createRandom();
+  //   const newWallet = ethers.Wallet.createRandom();
 
-    const data = {
-      walletType: WALLET_TYPE_EVM,
-      keypairSecret: newWallet.privateKey
-    };
+  //   const data = {
+  //     walletType: WALLET_TYPE_EVM,
+  //     keypairSecret: newWallet.privateKey
+  //   };
 
-    const encoded_data = abiCoder.encode(
-      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
-      [ data ]
-    );
+  //   const encoded_data = abiCoder.encode(
+  //     [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+  //     [ data ]
+  //   );
 
-    let digest = ethers.solidityPackedKeccak256(
-      ['bytes32', 'bytes'],
-      [SIMPLE_PASSWORD, encoded_data],
-    );
+  //   let digest = ethers.solidityPackedKeccak256(
+  //     ['bytes32', 'bytes'],
+  //     [SIMPLE_PASSWORD, encoded_data],
+  //   );
 
-    let tx = await WA.addWalletPassword(
-      {
-        hashedUsername: username,
-        digest,
-        data: encoded_data
-      }
-    );
-    await tx.wait();
+  //   let tx = await WA.addWalletPassword(
+  //     {
+  //       hashedUsername: username,
+  //       digest,
+  //       data: encoded_data
+  //     }
+  //   );
+  //   await tx.wait();
 
-    // Check if wallet correctly imported
-    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+  //   // Check if wallet correctly imported
+  //   let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
-    expect(accountWallets.length).to.equal(2);
+  //   expect(accountWallets.length).to.equal(2);
 
-    // top-up wallet
-    await owner.sendTransaction({
-      to: accountWallets[0],
-      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
-    });
+  //   const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
 
-    await owner.sendTransaction({
-      to: accountWallets[1],
-      value: ethers.parseEther("0.5"), // Sends exactly 0.5 ether
-    });
+  //   const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
+  //   let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
 
-    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+  //   // Remove second wallet
+  //   let txRequest = {
+  //     to: accountAddress,
+  //     data: in_inner_data,
+  //     gasLimit: 1000000,
+  //     value: 0,
+  //     nonce: 0,
+  //     chainId: SAPPHIRE_LOCALNET,
+  //     gasPrice: 100000000000, // 100 gwei
+  //   };
 
-    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
-    let in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_1]);;
+  //   let in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
-    // Remove second wallet
-    let txRequest = {
-      to: accountAddress,
-      data: in_inner_data,
-      gasLimit: 1000000,
-      value: 0,
-      nonce: 0,
-      chainId: SAPPHIRE_LOCALNET,
-      gasPrice: 100000000000, // 100 gwei
-    };
+  //   let in_digest = ethers.solidityPackedKeccak256(
+  //     ['bytes32', 'bytes'],
+  //     [SIMPLE_PASSWORD, in_data],
+  //   );
 
-    let in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+  //   let resp = await WA.proxyViewPassword(
+  //     username, WALLET_TYPE_EVM, in_digest, in_data
+  //   );
 
-    let in_digest = ethers.solidityPackedKeccak256(
-      ['bytes32', 'bytes'],
-      [SIMPLE_PASSWORD, in_data],
-    );
+  //   let [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
-    let resp = await WA.proxyViewPassword(
-      username, WALLET_TYPE_EVM, in_digest, in_data
-    );
+  //   // Broadcast transaction
+  //   const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+  //   const receipt = await waitForTx(txHash);
+  //   console.log(receipt);
 
-    let [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+  //   // Check if wallet correctly imported
+  //   accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
 
-    // Broadcast transaction
-    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
-    await waitForTx(txHash);
+  //   expect(accountWallets.length).to.equal(2);
+  //   expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
 
-    // Check if wallet correctly imported
-    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+  //   // Try removing already removed address
+  //   // Try removing already removed address
+  //   // Try removing already removed address
+  //   txRequest.nonce += 1;
 
-    expect(accountWallets.length).to.equal(2);
-    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+  //   in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
 
-    // Try removing already removed address
-    // Try removing already removed address
-    // Try removing already removed address
-    txRequest.nonce += 1;
+  //   in_digest = ethers.solidityPackedKeccak256(
+  //     ['bytes32', 'bytes'],
+  //     [SIMPLE_PASSWORD, in_data],
+  //   );
 
-    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+  //   resp = await WA.proxyViewPassword(
+  //     username, WALLET_TYPE_EVM, in_digest, in_data
+  //   );
 
-    in_digest = ethers.solidityPackedKeccak256(
-      ['bytes32', 'bytes'],
-      [SIMPLE_PASSWORD, in_data],
-    );
+  //   [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
 
-    resp = await WA.proxyViewPassword(
-      username, WALLET_TYPE_EVM, in_digest, in_data
-    );
+  //   const txHashDupl = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+  //   const receiptDupl = await waitForTx(txHashDupl);
 
-    [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+  //   // The status of a transaction is 1 is successful or 0 if it was reverted. 
+  //   expect(receiptDupl.status).to.equal(0);
 
-    const txHashDupl = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
-    const receiptDupl = await waitForTx(txHashDupl);
+  //   // Try performing transaction with removed account (remove wallet 0)
+  //   // Try performing transaction with removed account (remove wallet 0)
+  //   // Try performing transaction with removed account (remove wallet 0)
+  //   in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_0]);;
 
-    // The status of a transaction is 1 is successful or 0 if it was reverted. 
-    expect(receiptDupl.status).to.equal(0);
+  //   // Remove second wallet
+  //   txRequest = {
+  //     to: accountAddress,
+  //     data: in_inner_data,
+  //     gasLimit: 1000000,
+  //     value: 0,
+  //     nonce: 0,
+  //     chainId: SAPPHIRE_LOCALNET,
+  //     gasPrice: 100000000000, // 100 gwei
+  //   };
 
-    // Try performing transaction with removed account (remove wallet 0)
-    // Try performing transaction with removed account (remove wallet 0)
-    // Try performing transaction with removed account (remove wallet 0)
-    in_inner_data = iface.encodeFunctionData('removeWallet', [WALLET_IDX_0]);;
+  //   in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_1, txRequest]);
 
-    // Remove second wallet
-    txRequest = {
-      to: accountAddress,
-      data: in_inner_data,
-      gasLimit: 1000000,
-      value: 0,
-      nonce: 0,
-      chainId: SAPPHIRE_LOCALNET,
-      gasPrice: 100000000000, // 100 gwei
-    };
+  //   in_digest = ethers.solidityPackedKeccak256(
+  //     ['bytes32', 'bytes'],
+  //     [SIMPLE_PASSWORD, in_data],
+  //   );
 
-    in_data = iface.encodeFunctionData('signEIP155', [WALLET_IDX_1, txRequest]);
-
-    in_digest = ethers.solidityPackedKeccak256(
-      ['bytes32', 'bytes'],
-      [SIMPLE_PASSWORD, in_data],
-    );
-
-    let shortMessage;
-    try{
-      resp = await WA.proxyViewPassword(
-        username, WALLET_TYPE_EVM, in_digest, in_data
-      );
-    } catch(e: any) {
-      shortMessage = e.toString();
-    }
-    expect(shortMessage).to.have.string('execution reverted: Wallet removed');
-  });
+  //   let shortMessage;
+  //   try{
+  //     resp = await WA.proxyViewPassword(
+  //       username, WALLET_TYPE_EVM, in_digest, in_data
+  //     );
+  //   } catch(e: any) {
+  //     shortMessage = e.toString();
+  //   }
+  //   expect(shortMessage).to.have.string('execution reverted: Wallet removed');
+  // });
 
   it("Register + preventing duplicates", async function() {
     const username = hashedUsername(SALT, "testuser");
@@ -1533,6 +1524,183 @@ describe("AccountManager", function() {
     
     expect(accountWallets.length).to.equal(2);
     expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+  });
+
+  it("Remove wallet using password authentication", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Add a second wallet
+    const newWallet = ethers.Wallet.createRandom();
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Verify wallet was added
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+
+    // Remove the second wallet using password authentication
+    const removeWalletData = abiCoder.encode(
+      [ "uint256", "uint256" ], 
+      [ WALLET_TYPE_EVM, 1 /* walletId */ ]
+    );
+
+    digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, removeWalletData],
+    );
+
+    tx = await WA.removeWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: removeWalletData
+      }
+    );
+    await tx.wait();
+
+    // Verify wallet was removed
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+
+    // Try removing already removed wallet
+    try {
+      tx = await WA.removeWalletPassword(
+        {
+          hashedUsername: username,
+          digest,
+          data: removeWalletData
+        }
+      );
+      await tx.wait();
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
+    }
+  });
+
+  it("Remove wallet using credential authentication", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Add a second wallet
+    const newWallet = ethers.Wallet.createRandom();
+    const data = {
+      walletType: WALLET_TYPE_EVM,
+      keypairSecret: newWallet.privateKey
+    };
+
+    const encoded_data = abiCoder.encode(
+      [ "tuple(uint256 walletType, bytes32 keypairSecret)" ], 
+      [ data ]
+    );
+
+    let digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, encoded_data],
+    );
+
+    let tx = await WA.addWalletPassword(
+      {
+        hashedUsername: username,
+        digest,
+        data: encoded_data
+      }
+    );
+    await tx.wait();
+
+    // Verify wallet was added
+    let accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(newWallet.address);
+
+    // Remove the second wallet using credential authentication
+    const removeWalletData = abiCoder.encode(
+      [ "uint256", "uint256" ], 
+      [ WALLET_TYPE_EVM, 1 /* walletId */ ]
+    );
+
+    const personalization = await WA.personalization();
+    const credentialIdHashed = ethers.keccak256(accountData.credentials[0].credentialId);
+
+    // Create & encode challenge
+    const challange = await HELPER.createChallengeBase64(removeWalletData, personalization);
+
+    const authenticatorData = "0x";
+    const clientDataTokens = [
+      {
+        t: 0, // 0 = JSONString, 1 = JSONBool
+        k: 'challenge',
+        v: challange
+      },
+      {
+        t: 0, // 0 = JSONString, 1 = JSONBool
+        k: 'type',
+        v: 'webauthn.get'
+      }
+    ];
+
+    digest = await HELPER.createDigest(authenticatorData, clientDataTokens);
+    digest = digest.replace("0x", "");
+
+    const signature = secp256r1.sign(digest, accountData.credentials[0].privateKey);
+
+    const in_resp = {
+      authenticatorData,
+      clientDataTokens,
+      sigR: signature.r,
+      sigS: signature.s,
+    }
+
+    tx = await WA.removeWallet(
+      {
+        credentialIdHashed: credentialIdHashed,
+        resp: in_resp,
+        data: removeWalletData
+      }
+    );
+    await tx.wait();
+
+    // Verify wallet was removed
+    accountWallets = await getAccountWallets(username, WALLET_TYPE_EVM);
+    expect(accountWallets.length).to.equal(2);
+    expect(accountWallets[1]).to.equal(ethers.ZeroAddress);
+
+    // Try removing already removed wallet
+    try {
+      tx = await WA.removeWallet(
+        {
+          credentialIdHashed: credentialIdHashed,
+          resp: in_resp,
+          data: removeWalletData
+        }
+      );
+      await tx.wait();
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
+    }
   });
 
   async function createAccount(username: any, password: any) {

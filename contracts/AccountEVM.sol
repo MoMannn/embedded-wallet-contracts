@@ -90,15 +90,7 @@ contract AccountEVM is Account {
 
         walletSecret[keypairAddressB32] = keypairSecret;
 
-        _controllers[keypairAddress] = true;
-
         return keypairAddressB32;
-    }
-
-
-    function _afterRemoveWallet(bytes32 publicKey) internal override {
-        // remove from authorized controllers
-        _controllers[bytes32ToAddress(publicKey)] = false;
     }
 
     /**

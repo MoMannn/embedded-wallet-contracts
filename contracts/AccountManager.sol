@@ -163,7 +163,7 @@ contract AccountManager is AccountManagerStorage,
      *
      * @param args credential data
      */
-    function manageCredential (ActionCred memory args) 
+    function manageCredential(ActionCred memory args) 
         public 
     {
         bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
