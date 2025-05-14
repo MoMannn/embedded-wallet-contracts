@@ -164,7 +164,8 @@ abstract contract Account {
         public virtual
         onlyByController
     {
-        return payable(in_target).transfer(amount);
+        (bool success, ) = payable(in_target).call{value: amount}("");
+        require(success, "Transfer failed");
     }
 
     /**
