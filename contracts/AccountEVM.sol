@@ -9,6 +9,8 @@ import {Account} from "./Account.sol";
 
 contract AccountEVM is Account {
 
+    bytes32 constant MAX_VALID_PRIVATE_KEY = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140;
+
     /**
      * @dev Sign EIP155 transaction
      *
@@ -66,8 +68,9 @@ contract AccountEVM is Account {
 
         if (keypairSecret == bytes32(0)) {
             (keypairAddress, keypairSecret) = EthereumUtils.generateKeypair();
-
         } else {
+            require(keypairSecret <= MAX_VALID_PRIVATE_KEY, "Invalid private key range");
+
             // Generate publicKey from privateKey
             bytes memory keypairSecretB = abi.encodePacked(keypairSecret);
 
