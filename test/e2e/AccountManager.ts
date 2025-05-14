@@ -27,8 +27,9 @@ describe("AccountManager", function() {
   const CREDENTIAL_ACTION_ADD = 0;
   const CREDENTIAL_ACTION_REMOVE = 1;
 
-  const SIMPLE_PASSWORD = "0x0000000000000000000000000000000000000000000000000000000000000001";
-  const WRONG_PASSWORD  = "0x0000000000000000000000000000000000000000000000000000009999999999";
+  const SHORT_PASSWORD = ethers.encodeBytes32String("test");
+  const SIMPLE_PASSWORD = ethers.encodeBytes32String("testtest12");
+  const WRONG_PASSWORD = ethers.encodeBytes32String("testtest13");
 
   const RANDOM_STRING  = "0x000000000000000000000000000000000000000000000000000000000000DEAD";
 
@@ -81,6 +82,48 @@ describe("AccountManager", function() {
     });
 
     SALT = ethers.toBeArray(await WA.salt());
+  });
+
+  it("can create account without password", async function() {
+    const username = hashedUsername(SALT, "testuser");
+
+    const keyPair = generateNewKeypair();
+
+    const password = BYTES32_ZERO;
+
+    let registerData = {
+      hashedUsername: username,
+      credentialId: keyPair.credentialId,
+      pubkey: {
+        kty: 2, // Elliptic Curve format
+        alg: -7, // ES256 algorithm
+        crv: 1, // P-256 curve
+        x: keyPair.decoded_x,
+        y: keyPair.decoded_y,
+      },
+      optionalPassword: password,
+      wallet: {
+        walletType: WALLET_TYPE_EVM,
+        keypairSecret: BYTES32_ZERO // create new wallet
+      }
+    };
+
+
+    const tx = await WA.createAccount(registerData);
+     await tx.wait();
+
+    expect(await WA.userExists(username)).to.equal(true);
+  });
+
+  it("Should fail if password is too short", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    try {
+      await createAccount(username, SHORT_PASSWORD);
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("transaction execution reverted");
+    }
+
+    expect(await WA.userExists(username)).to.equal(false);
   });
 
   it("Sign random string with new account", async function() {

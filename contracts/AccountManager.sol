@@ -40,7 +40,6 @@ contract AccountManager is AccountManagerStorage,
     UUPSUpgradeable,
     AccessControlUpgradeable
 {
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor()  {
         _disableInitializers();
@@ -354,6 +353,23 @@ contract AccountManager is AccountManagerStorage,
     }
 
     /**
+     * @dev Helper function to check the length of a bytes32 value by looking for zero padding
+     * @param data The bytes32 value to check
+     * @return The length of the original data before zero padding
+     */
+    function getBytes32Length(bytes32 data) internal pure returns (uint256) {
+        uint256 length = 0;
+        for(uint256 i = 0; i < 32; i++) {
+            if(data[i] != 0) {
+                length = i + 1;
+            } else {
+                break;
+            }
+        }
+        return length;
+    }
+
+    /**
      * @dev Create new account
      *
      * @param in_hashedUsername PBKDF2 hashed username
@@ -375,6 +391,11 @@ contract AccountManager is AccountManagerStorage,
 
         // Set password only first time
         if (user.password == bytes32(0)) {
+            uint256 len = getBytes32Length(in_optionalPassword);
+            if(len > 0) {
+                require(len > 9, "Password must be at least 10 characters");
+            }
+
             user.password = in_optionalPassword;
         }
 
@@ -390,6 +411,7 @@ contract AccountManager is AccountManagerStorage,
                 keypairSecret
             )
         );
+
     }
 
     /**
