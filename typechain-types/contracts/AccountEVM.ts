@@ -97,7 +97,7 @@ export interface AccountEVMInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "call",
-    values: [AddressLike, BytesLike]
+    values: [AddressLike, BytesLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "createWallet",
@@ -137,11 +137,11 @@ export interface AccountEVMInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "staticcall",
-    values: [AddressLike, BytesLike]
+    values: [AddressLike, BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "transfer",
-    values: [AddressLike, BigNumberish]
+    values: [AddressLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "walletAddress",
@@ -252,7 +252,12 @@ export interface AccountEVM extends BaseContract {
   bytes32ToAddress: TypedContractMethod<[_b: BytesLike], [string], "view">;
 
   call: TypedContractMethod<
-    [in_contract: AddressLike, in_data: BytesLike],
+    [
+      in_contract: AddressLike,
+      in_data: BytesLike,
+      value: BigNumberish,
+      walletId: BigNumberish
+    ],
     [string],
     "nonpayable"
   >;
@@ -304,13 +309,13 @@ export interface AccountEVM extends BaseContract {
   >;
 
   staticcall: TypedContractMethod<
-    [in_contract: AddressLike, in_data: BytesLike],
+    [in_contract: AddressLike, in_data: BytesLike, walletId: BigNumberish],
     [string],
     "view"
   >;
 
   transfer: TypedContractMethod<
-    [in_target: AddressLike, amount: BigNumberish],
+    [in_target: AddressLike, amount: BigNumberish, walletId: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -334,7 +339,12 @@ export interface AccountEVM extends BaseContract {
   getFunction(
     nameOrSignature: "call"
   ): TypedContractMethod<
-    [in_contract: AddressLike, in_data: BytesLike],
+    [
+      in_contract: AddressLike,
+      in_data: BytesLike,
+      value: BigNumberish,
+      walletId: BigNumberish
+    ],
     [string],
     "nonpayable"
   >;
@@ -384,14 +394,14 @@ export interface AccountEVM extends BaseContract {
   getFunction(
     nameOrSignature: "staticcall"
   ): TypedContractMethod<
-    [in_contract: AddressLike, in_data: BytesLike],
+    [in_contract: AddressLike, in_data: BytesLike, walletId: BigNumberish],
     [string],
     "view"
   >;
   getFunction(
     nameOrSignature: "transfer"
   ): TypedContractMethod<
-    [in_target: AddressLike, amount: BigNumberish],
+    [in_target: AddressLike, amount: BigNumberish, walletId: BigNumberish],
     [void],
     "nonpayable"
   >;

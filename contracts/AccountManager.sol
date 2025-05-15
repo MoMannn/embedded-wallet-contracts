@@ -125,6 +125,8 @@ contract AccountManager is AccountManagerStorage,
         );
 
         internal_addCredential(args.hashedUsername, args.credentialId, args.pubkey);
+
+        // Sapphire.padGas(3500000);
     }
 
     /**
@@ -650,7 +652,8 @@ contract AccountManager is AccountManagerStorage,
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredential) || 
             gaslessArgs.txType == uint8(TxType.AddWallet) ||
-            gaslessArgs.txType == uint8(TxType.RemoveWallet)
+            gaslessArgs.txType == uint8(TxType.RemoveWallet) ||
+            gaslessArgs.txType == uint8(TxType.ModifyController)
         ) {
             ActionCred memory args = abi.decode(gaslessArgs.funcData, (ActionCred));
 
@@ -660,6 +663,8 @@ contract AccountManager is AccountManagerStorage,
                 addWallet(args);
             } else if (gaslessArgs.txType == uint8(TxType.RemoveWallet)) {
                 removeWallet(args);
+            } else if (gaslessArgs.txType == uint8(TxType.ModifyController)) {
+                modifyController(args);
             }
             
             // Get user for emit event
@@ -668,7 +673,8 @@ contract AccountManager is AccountManagerStorage,
         } else if (
             gaslessArgs.txType == uint8(TxType.ManageCredentialPassword) ||
             gaslessArgs.txType == uint8(TxType.AddWalletPassword) ||
-            gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)
+            gaslessArgs.txType == uint8(TxType.RemoveWalletPassword) ||
+            gaslessArgs.txType == uint8(TxType.ModifyControllerPassword)
         ) {
             ActionPass memory args = abi.decode(gaslessArgs.funcData, (ActionPass));
 
@@ -678,6 +684,8 @@ contract AccountManager is AccountManagerStorage,
                 addWalletPassword(args);
             } else if(gaslessArgs.txType == uint8(TxType.RemoveWalletPassword)) { 
                 removeWalletPassword(args);
+            } else if(gaslessArgs.txType == uint8(TxType.ModifyControllerPassword)) {
+                modifyControllerPassword(args);
             }
 
             // Get user for emit event
@@ -784,5 +792,61 @@ contract AccountManager is AccountManagerStorage,
         bytes32 message = MessageHashUtils.toEthSignedMessageHash(dataHash);
         address receivedAddress = ECDSA.recover(message, _signature);
         return (dataHash, receivedAddress == signer);
+    }
+
+    /**
+     * @dev Modify controller with credential
+     *
+     * @param args credential data
+     */
+    function modifyController (ActionCred memory args) 
+        public 
+    {
+        bytes32 challenge = sha256(abi.encodePacked(personalization, sha256(args.data)));
+        User memory user = internal_verifyCredential(args.credentialIdHashed, challenge, args.resp);
+
+        internal_modifyController(user, args.data);
+    }
+
+    /**
+     * @dev Modify controller with password
+     *
+     * @param args credential data
+     */
+    function modifyControllerPassword (ActionPass memory args) 
+        public 
+    {
+        User memory user = internal_verifyPassword(
+            args.hashedUsername, 
+            args.digest, 
+            args.data
+        );
+
+        internal_modifyController(user, args.data);
+    }
+
+    /**
+     * @dev Modify controller on an account
+     *
+     * @param user user data
+     * @param data encoded controller data
+     */
+    function internal_modifyController(
+        User memory user,
+        bytes memory data
+    ) internal {
+        (
+            uint256 walletType,
+            address controller,
+            bool status
+        ) = abi.decode(data, (uint256, address, bool));
+
+        IAccount account = user.accounts[walletType];
+        require(
+            address(account) != address(0), 
+            "Account for this walletType not initialized"
+        );
+
+        account.modifyController(controller, status);
     }
 }

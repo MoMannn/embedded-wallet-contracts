@@ -3,12 +3,8 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BigNumberish,
-  BytesLike,
   FunctionFragment,
-  Result,
   Interface,
-  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -18,46 +14,15 @@ import type {
   TypedDeferredTopicFilter,
   TypedEventLog,
   TypedListener,
-  TypedContractMethod,
-} from "../../common";
+} from "../../../../common";
 
-export interface IAccountInterface extends Interface {
-  getFunction(
-    nameOrSignature: "createWallet" | "modifyController" | "removeWallet"
-  ): FunctionFragment;
+export interface IERC1155ErrorsInterface extends Interface {}
 
-  encodeFunctionData(
-    functionFragment: "createWallet",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "modifyController",
-    values: [AddressLike, boolean]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "removeWallet",
-    values: [BigNumberish]
-  ): string;
-
-  decodeFunctionResult(
-    functionFragment: "createWallet",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "modifyController",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "removeWallet",
-    data: BytesLike
-  ): Result;
-}
-
-export interface IAccount extends BaseContract {
-  connect(runner?: ContractRunner | null): IAccount;
+export interface IERC1155Errors extends BaseContract {
+  connect(runner?: ContractRunner | null): IERC1155Errors;
   waitForDeployment(): Promise<this>;
 
-  interface: IAccountInterface;
+  interface: IERC1155ErrorsInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -96,41 +61,9 @@ export interface IAccount extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  createWallet: TypedContractMethod<
-    [keypairSecret: BytesLike],
-    [string],
-    "nonpayable"
-  >;
-
-  modifyController: TypedContractMethod<
-    [who: AddressLike, status: boolean],
-    [void],
-    "nonpayable"
-  >;
-
-  removeWallet: TypedContractMethod<
-    [walletId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
-
-  getFunction(
-    nameOrSignature: "createWallet"
-  ): TypedContractMethod<[keypairSecret: BytesLike], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "modifyController"
-  ): TypedContractMethod<
-    [who: AddressLike, status: boolean],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "removeWallet"
-  ): TypedContractMethod<[walletId: BigNumberish], [void], "nonpayable">;
 
   filters: {};
 }

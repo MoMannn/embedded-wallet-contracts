@@ -5,6 +5,9 @@ export const ACCOUNT_ABI = [
   'function getWalletList() view returns (bytes32[])',
   'function walletAddress (uint256 walletId) view returns (bytes32)',
   'function removeWallet(uint256 walletId)',
+  'function transfer(address in_target, uint256 amount, uint256 walletId) public',
+  'function call(address in_contract, bytes calldata in_data, uint256 value, uint256 walletId) public',
+  'function staticcall(address in_contract, bytes calldata in_data, uint256 value, uint256 walletId) public',
 ];
 
 export const ACCOUNT_EVM_ABI = [

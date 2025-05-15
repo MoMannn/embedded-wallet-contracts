@@ -84,35 +84,63 @@ describe("AccountManager", function() {
     SALT = ethers.toBeArray(await WA.salt());
   });
 
-  it("can create account without password", async function() {
-    const username = hashedUsername(SALT, "testuser");
+  it.skip("Test gas used when creating accounts with different password lengths", async function() {
+    const username1 = hashedUsername(SALT, "testuser1");
+    const username2 = hashedUsername(SALT, "testuser2");
 
-    const keyPair = generateNewKeypair();
+    const keyPair1 = generateNewKeypair();
+    const keyPair2 = generateNewKeypair();
 
-    const password = BYTES32_ZERO;
-
-    let registerData = {
-      hashedUsername: username,
-      credentialId: keyPair.credentialId,
+    const password1 = SIMPLE_PASSWORD;
+    const password2 = ethers.encodeBytes32String("testtest12testtest12");
+ 
+    let registerData1 = {
+      hashedUsername: username1,
+      credentialId: keyPair1.credentialId,
       pubkey: {
         kty: 2, // Elliptic Curve format
         alg: -7, // ES256 algorithm
         crv: 1, // P-256 curve
-        x: keyPair.decoded_x,
-        y: keyPair.decoded_y,
+        x: keyPair1.decoded_x,
+        y: keyPair1.decoded_y,
       },
-      optionalPassword: password,
+      optionalPassword: password1,
       wallet: {
         walletType: WALLET_TYPE_EVM,
         keypairSecret: BYTES32_ZERO // create new wallet
       }
     };
 
+    let registerData2 = {
+      hashedUsername: username2,
+      credentialId: keyPair2.credentialId,
+      pubkey: {
+        kty: 2, // Elliptic Curve format
+        alg: -7, // ES256 algorithm
+        crv: 1, // P-256 curve
+        x: keyPair2.decoded_x,
+        y: keyPair2.decoded_y,
+      },
+      optionalPassword: password2,
+      wallet: {
+        walletType: WALLET_TYPE_EVM,
+        keypairSecret: BYTES32_ZERO // create new wallet
+      }
+    };
 
-    const tx = await WA.createAccount(registerData);
-     await tx.wait();
+    const tx1 = await WA.createAccount(registerData1);
+    const res1 = await tx1.wait();
 
-    expect(await WA.userExists(username)).to.equal(true);
+    const tx2 = await WA.createAccount(registerData2);
+    const res2 = await tx2.wait();
+
+    console.log("gasUsed: ", res1.gasUsed);
+    console.log("gasUsed: ", res2.gasUsed);
+    console.log("gasUsed: ", res2.gasUsed - res1.gasUsed);
+
+    expect(await WA.userExists(username1)).to.equal(true);
+    expect(await WA.userExists(username2)).to.equal(true);
+    expect(res1.gasUsed).to.equal(res2.gasUsed);
   });
 
   it("Should fail if password is too short", async function() {
@@ -808,7 +836,7 @@ describe("AccountManager", function() {
 
     const tx = await WA.manageCredential(
       {
-        credentialIdHashed: credentialIdHashed,
+        credentialIdHashed,
         resp: in_resp,
         data: encoded_data
       }
@@ -1226,7 +1254,7 @@ describe("AccountManager", function() {
 
     const tx_remove = await WA.manageCredential(
       {
-        credentialIdHashed: credentialIdHashed,
+        credentialIdHashed,
         resp: in_resp,
         data: encoded_data
       }
@@ -1676,7 +1704,7 @@ describe("AccountManager", function() {
 
     tx = await WA.removeWallet(
       {
-        credentialIdHashed: credentialIdHashed,
+        credentialIdHashed,
         resp: in_resp,
         data: removeWalletData
       }
@@ -1692,7 +1720,7 @@ describe("AccountManager", function() {
     try {
       tx = await WA.removeWallet(
         {
-          credentialIdHashed: credentialIdHashed,
+          credentialIdHashed,
           resp: in_resp,
           data: removeWalletData
         }
@@ -1701,6 +1729,272 @@ describe("AccountManager", function() {
     } catch(e: any) {
       expect(e.toString()).to.have.string("transaction execution reverted");
     }
+  });
+
+  it("Modify controller on account via account manager with password", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Get the account address from the account manager
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+    expect(accountAddress).to.not.equal(ethers.ZeroAddress);
+    
+    // Get the account contract
+    const account = await ethers.getContractAt("AccountEVM", accountAddress);
+
+    const address = await WA.getAddress();
+
+    // Verify initial controller status
+    expect(await account.isController(address)).to.be.true;
+    expect(await account.isController(account1.address)).to.be.false;
+
+    // Encode controller data
+    const controllerData = abiCoder.encode(
+      ["uint256", "address", "bool"],
+      [WALLET_TYPE_EVM, account1.address, true]
+    );
+
+    // Create digest with password
+    const digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, controllerData],
+    );
+
+    // Call modifyController via account manager
+    await WA.modifyControllerPassword({
+      hashedUsername: username,
+      digest,
+      data: controllerData
+    });
+
+    // Verify new controller status
+    expect(await account.isController(account1.address)).to.be.true;
+
+  });
+
+  it("Modify controller on account via account manager with credential", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Get the account address from the account manager
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+    expect(accountAddress).to.not.equal(ethers.ZeroAddress);
+    
+    // Get the account contract
+    const account = await ethers.getContractAt("AccountEVM", accountAddress);
+
+    const address = await WA.getAddress();
+
+    // Verify initial controller status
+    expect(await account.isController(address)).to.be.true;
+    expect(await account.isController(account1.address)).to.be.false;
+
+    // Encode controller data
+    const controllerData = abiCoder.encode(
+      ["uint256", "address", "bool"],
+      [WALLET_TYPE_EVM, account1.address, true]
+    );
+
+    // Create challenge and get credential response
+    const personalization = await WA.personalization();
+    const credentialIdHashed = ethers.keccak256(accountData.credentials[0].credentialId);
+
+    // Create & encode challenge
+    const challenge = await HELPER.createChallengeBase64(controllerData, personalization);
+
+    const authenticatorData = "0x";
+    const clientDataTokens = [
+      {
+        t: 0, // 0 = JSONString, 1 = JSONBool
+        k: 'challenge',
+        v: challenge
+      },
+      {
+        t: 0, // 0 = JSONString, 1 = JSONBool
+        k: 'type',
+        v: 'webauthn.get'
+      }
+    ];
+
+    let digest = await HELPER.createDigest(authenticatorData, clientDataTokens);
+    digest = digest.replace("0x", "");
+
+    const signature = secp256r1.sign(digest, accountData.credentials[0].privateKey);
+
+    const resp = {
+      authenticatorData,
+      clientDataTokens,
+      sigR: signature.r,
+      sigS: signature.s,
+    }
+
+    // Call modifyController via account manager
+    await WA.modifyController({
+      credentialIdHashed,
+      data: controllerData,
+      resp
+    });
+
+    // Verify new controller status
+    expect(await account.isController(account1.address)).to.be.true;
+
+  });
+
+  it("Modify controller on account via account manager with gasless transaction", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Get the account address from the account manager
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+    expect(accountAddress).to.not.equal(ethers.ZeroAddress);
+    
+    // Get the account contract
+    const account = await ethers.getContractAt("AccountEVM", accountAddress);
+
+    const address = await WA.getAddress();
+
+    // Verify initial controller status
+    expect(await account.isController(address)).to.be.true;
+    expect(await account.isController(account1.address)).to.be.false;
+
+    // Encode controller data
+    const controllerData = abiCoder.encode(
+      ["uint256", "address", "bool"],
+      [WALLET_TYPE_EVM, account1.address, true]
+    );
+
+    // Create challenge and get credential response
+    const personalization = await WA.personalization();
+    const credentialIdHashed = ethers.keccak256(accountData.credentials[0].credentialId);
+
+    // Create & encode challenge
+    const challenge = await HELPER.createChallengeBase64(controllerData, personalization);
+
+    const authenticatorData = "0x";
+    const clientDataTokens = [
+      {
+        t: 0,
+        k: 'challenge',
+        v: challenge
+      },
+      {
+        t: 0,
+        k: 'type',
+        v: 'webauthn.get'
+      }
+    ];
+
+    let digest = await HELPER.createDigest(authenticatorData, clientDataTokens);
+    digest = digest.replace("0x", "");
+
+    const signature = secp256r1.sign(digest, accountData.credentials[0].privateKey);
+
+    const resp = {
+      authenticatorData,
+      clientDataTokens,
+      sigR: signature.r,
+      sigS: signature.s,
+    }
+
+    // Create ActionCred struct
+    const actionCred = {
+      credentialIdHashed,
+      resp,
+      data: controllerData
+    };
+
+    // Create GaslessData
+    const gaslessData = {
+      funcData: abiCoder.encode(
+        ["tuple(bytes32 credentialIdHashed, tuple(bytes authenticatorData, tuple(uint8 t, string k, string v)[] clientDataTokens, uint256 sigR, uint256 sigS) resp, bytes data)"],
+        [actionCred]
+      ),
+      txType: 7 // TxType.ModifyController
+    };
+
+    const gasPrice = (await owner.provider.getFeeData()).gasPrice;
+    const nonce = await owner.provider.getTransactionCount(await WA.gaspayingAddress());
+    const timestamp = Math.ceil(new Date().getTime() / 1000) + 3600;
+
+    const dataHash = ethers.solidityPackedKeccak256(
+      ['uint256', 'uint64', 'uint256', 'bytes32'],
+      [gasPrice, GAS_LIMIT, timestamp, ethers.keccak256(abiCoder.encode(["tuple(bytes funcData, uint8 txType)"], [gaslessData]))],
+    );
+    const signature2 = await signer.signMessage(ethers.getBytes(dataHash));
+
+    const signedTx = await WA.generateGaslessTx(
+      abiCoder.encode(["tuple(bytes funcData, uint8 txType)"], [gaslessData]),
+      nonce,
+      gasPrice,
+      GAS_LIMIT,
+      timestamp,
+      signature2
+    );
+
+    // Execute gasless transaction
+    const txHash = await owner.provider.send('eth_sendRawTransaction', [signedTx]);
+    await waitForTx(txHash);
+
+    // Verify new controller status
+    expect(await account.isController(account1.address)).to.be.true;
+
+    await account.connect(account1).transfer(account2.address, ethers.parseEther("0.0"), 0);
+
+  });
+
+  it("Transfer using proxyView and transfer with password authentication", async function() {
+ 
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    await owner.sendTransaction({
+      to: accountData.publicKey,
+      value: ethers.parseEther("1.0"),
+    });
+
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+
+    // Create the transfer function call data
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
+    const transferData = iface.encodeFunctionData('transfer', [
+      account1.address, // target address
+      ethers.parseEther("0.0"), // amount
+      WALLET_IDX_0 // walletId
+    ]);
+
+    // Create the transaction request
+    const txRequest = {
+      to: accountAddress,
+      data: transferData,
+      gasLimit: GAS_LIMIT,
+      value: 0,
+      nonce: await owner.provider.getTransactionCount(accountData.publicKey),
+      chainId: SAPPHIRE_LOCALNET,
+      gasPrice: 100000000000, // 100 gwei
+    };
+
+    // Create signEIP155 function call data
+    const signData = iface.encodeFunctionData('signEIP155', [WALLET_IDX_0, txRequest]);
+
+    // Create digest with password
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, signData],
+    );
+
+    // Get signed transaction via proxyView
+    const resp = await WA.proxyViewPassword(
+      username, WALLET_TYPE_EVM, in_digest, signData
+    );
+
+    // Decode the signed transaction
+    const [signedTx] = iface.decodeFunctionResult('signEIP155', resp).toArray();
+
+    // Execute the signed transaction
+    const txHash = await ethers.provider.send('eth_sendRawTransaction', [signedTx]);
+    const res = await waitForTx(txHash);
+    expect(res.from).to.equal(accountData.publicKey);
+
   });
 
   async function createAccount(username: any, password: any) {

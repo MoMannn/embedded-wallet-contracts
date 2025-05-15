@@ -10,4 +10,9 @@ interface IAccount {
     function removeWallet (
         uint256 walletId
     ) external;
+
+    function modifyController(
+        address who,
+        bool status
+    ) external;
 }

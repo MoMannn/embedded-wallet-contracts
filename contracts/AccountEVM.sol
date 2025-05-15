@@ -43,7 +43,6 @@ contract AccountEVM is Account {
         onlyActiveWallet(walletId)
         returns (SignatureRSV memory)
     {
-
         return EthereumUtils.sign(
             bytes32ToAddress(wallets[walletId]), 
             walletSecret[wallets[walletId]], 
@@ -105,13 +104,6 @@ contract AccountEVM is Account {
         return bytes32(uint256(uint160(_addr)));
     }
 
-    /**
-     * @dev Converts bytes32 to an address.
-     * @param _b The bytes32 value to convert.
-     * @return The address representation of bytes32.
-     */
-    function bytes32ToAddress(bytes32 _b) public pure returns (address) {
-        return address(uint160(uint256(_b)));
-    }
+ 
 
 }

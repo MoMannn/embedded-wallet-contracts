@@ -22,6 +22,25 @@ const _abi = [
   {
     inputs: [
       {
+        internalType: "bytes32",
+        name: "_b",
+        type: "bytes32",
+      },
+    ],
+    name: "bytes32ToAddress",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "pure",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
         name: "in_contract",
         type: "address",
@@ -30,6 +49,16 @@ const _abi = [
         internalType: "bytes",
         name: "in_data",
         type: "bytes",
+      },
+      {
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "walletId",
+        type: "uint256",
       },
     ],
     name: "call",
@@ -174,6 +203,11 @@ const _abi = [
         name: "in_data",
         type: "bytes",
       },
+      {
+        internalType: "uint256",
+        name: "walletId",
+        type: "uint256",
+      },
     ],
     name: "staticcall",
     outputs: [
@@ -196,6 +230,11 @@ const _abi = [
       {
         internalType: "uint256",
         name: "amount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "walletId",
         type: "uint256",
       },
     ],

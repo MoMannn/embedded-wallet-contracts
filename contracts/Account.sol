@@ -63,6 +63,13 @@ abstract contract Account {
         _;
     }
 
+    modifier onlyByControllerOrSelf (uint256 walletId)
+    {
+        require( _controllers[msg.sender] == true || msg.sender == bytes32ToAddress(wallets[walletId]), "OnlyByControllerOrSelf" );
+
+        _;
+    }
+
     modifier onlyActiveWallet (uint256 walletId)
     {
         require(walletId < wallets.length, "Invalid wallet id");
@@ -155,14 +162,15 @@ abstract contract Account {
     function _afterRemoveWallet(bytes32 publicKey) internal virtual {}
 
     /**
-     * @dev Transfer function in case any ETH gets stuck in account contract
+     * @dev Transfer function in case any ETH gets stuck in account contract.
+     * Should not happen since Account contract does not have a fallback function.
      *
      * @param in_target receipient
      * @param amount amount to be sent
      */
-    function transfer (address in_target, uint256 amount)
+    function transfer (address in_target, uint256 amount, uint256 walletId)
         public virtual
-        onlyByController
+        onlyByControllerOrSelf(walletId)
     {
         (bool success, ) = payable(in_target).call{value: amount}("");
         require(success, "Transfer failed");
@@ -174,13 +182,13 @@ abstract contract Account {
      * @param in_contract target contract
      * @param in_data target data
      */
-    function call (address in_contract, bytes calldata in_data)
+    function call (address in_contract, bytes calldata in_data, uint256 value, uint256 walletId)
         public virtual
-        onlyByController
+        onlyByControllerOrSelf(walletId)
         returns (bytes memory out_data)
     {
         bool success;
-        (success, out_data) = in_contract.call(in_data);
+        (success, out_data) = in_contract.call{value: value}(in_data);
         assembly {
             switch success
             case 0 { revert(add(out_data,32),mload(out_data)) }
@@ -193,9 +201,9 @@ abstract contract Account {
      * @param in_contract target contract
      * @param in_data target data
      */
-    function staticcall (address in_contract, bytes calldata in_data)
+    function staticcall (address in_contract, bytes calldata in_data, uint256 walletId)
         public virtual view
-        onlyByController
+        onlyByControllerOrSelf(walletId)
         returns (bytes memory out_data)
     {
         bool success;
@@ -228,4 +236,13 @@ abstract contract Account {
     function _createWallet (
         bytes32 keypairSecret
     ) internal virtual returns (bytes32);
+
+    /**
+     * @dev Converts bytes32 to an address.
+     * @param _b The bytes32 value to convert.
+     * @return The address representation of bytes32.
+     */
+    function bytes32ToAddress(bytes32 _b) public pure returns (address) {
+        return address(uint160(uint256(_b)));
+    }
 }
