@@ -84,11 +84,12 @@ abstract contract Account {
      * @param who address
      * @param status true/false if whitelisted or not
      */
-    function modifyController(address who, bool status)
+    function modifyController(address who, bool status, uint256 deadline)
         public
         onlyByController
     {
         require(who != address(0), "Invalid address");
+        require(deadline > block.timestamp, "Invalid deadline");
         _controllers[who] = status;
     }
 
@@ -122,12 +123,13 @@ abstract contract Account {
      *
      * @param walletId index in wallets list
      */
-    function exportPrivateKey (uint256 walletId)
+    function exportPrivateKey (uint256 walletId, uint256 deadline)
         public virtual view
         onlyByController
         onlyActiveWallet(walletId)
         returns (bytes32)
     {
+        require(deadline > block.timestamp, "Invalid deadline");
         return walletSecret[wallets[walletId]];
     }
 

@@ -98,6 +98,11 @@ const _abi = [
         name: "walletId",
         type: "uint256",
       },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
     ],
     name: "exportPrivateKey",
     outputs: [
@@ -171,6 +176,11 @@ const _abi = [
         internalType: "bool",
         name: "status",
         type: "bool",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
       },
     ],
     name: "modifyController",

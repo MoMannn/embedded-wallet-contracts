@@ -40,6 +40,11 @@ const _abi = [
         name: "status",
         type: "bool",
       },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
     ],
     name: "modifyController",
     outputs: [],

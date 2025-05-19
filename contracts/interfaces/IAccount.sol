@@ -13,6 +13,7 @@ interface IAccount {
 
     function modifyController(
         address who,
-        bool status
+        bool status,
+        uint256 deadline
     ) external;
 }

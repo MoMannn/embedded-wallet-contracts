@@ -1,7 +1,7 @@
 export const SAPPHIRE_LOCALNET = 23293;
 export const GAS_LIMIT = 1000000;
 export const ACCOUNT_ABI = [
-  'function exportPrivateKey(uint256 walletId) view returns (bytes32)',
+  'function exportPrivateKey(uint256 walletId, uint256 deadline) view returns (bytes32)',
   'function getWalletList() view returns (bytes32[])',
   'function walletAddress (uint256 walletId) view returns (bytes32)',
   'function removeWallet(uint256 walletId)',

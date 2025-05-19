@@ -838,8 +838,9 @@ contract AccountManager is AccountManagerStorage,
         (
             uint256 walletType,
             address controller,
-            bool status
-        ) = abi.decode(data, (uint256, address, bool));
+            bool status,
+            uint256 deadline
+        ) = abi.decode(data, (uint256, address, bool, uint256));
 
         IAccount account = user.accounts[walletType];
         require(
@@ -847,6 +848,6 @@ contract AccountManager is AccountManagerStorage,
             "Account for this walletType not initialized"
         );
 
-        account.modifyController(controller, status);
+        account.modifyController(controller, status, deadline);
     }
 }

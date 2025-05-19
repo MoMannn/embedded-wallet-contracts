@@ -185,7 +185,8 @@ describe("AccountManager", function() {
     expect(await WA.userExists(username)).to.equal(true);
 
     const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
-    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now  
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0, deadline]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
@@ -200,6 +201,30 @@ describe("AccountManager", function() {
 
     const unlockedWallet = new ethers.Wallet(exportedPrivateKey);
     expect(unlockedWallet.address).to.equal(accountData.publicKey);
+  });
+
+  it("Fail to export PK of new account with expired deadline", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    await createAccount(username, SIMPLE_PASSWORD);
+
+    expect(await WA.userExists(username)).to.equal(true);
+
+    const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
+    const deadline = Math.ceil(new Date().getTime() / 1000) - 3600; // 1 hour before now  
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0, deadline]);
+
+    const in_digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, in_data],
+    );
+
+    try {
+      await WA.proxyViewPassword(
+        username, WALLET_TYPE_EVM, in_digest, in_data
+      );
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("execution reverted: Invalid deadline");
+    }
   });
 
   it("Import PK EVM, import PK Substrate", async function() {
@@ -278,7 +303,8 @@ describe("AccountManager", function() {
 
     // Try to export, imported wallet
     const iface = new ethers.Interface(ACCOUNT_EVM_ABI);
-    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1]);
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now  
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_1, deadline]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
@@ -1749,9 +1775,10 @@ describe("AccountManager", function() {
     expect(await account.isController(account1.address)).to.be.false;
 
     // Encode controller data
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now
     const controllerData = abiCoder.encode(
-      ["uint256", "address", "bool"],
-      [WALLET_TYPE_EVM, account1.address, true]
+      ["uint256", "address", "bool", "uint256"],
+      [WALLET_TYPE_EVM, account1.address, true, deadline]
     );
 
     // Create digest with password
@@ -1769,6 +1796,49 @@ describe("AccountManager", function() {
 
     // Verify new controller status
     expect(await account.isController(account1.address)).to.be.true;
+
+  });
+
+  it("Modify controller fails with expired deadline via account manager with password", async function() {
+    const username = hashedUsername(SALT, "testuser");
+    const accountData = await createAccount(username, SIMPLE_PASSWORD);
+
+    // Get the account address from the account manager
+    const accountAddress = await WA.getAccount(username, WALLET_TYPE_EVM);
+    expect(accountAddress).to.not.equal(ethers.ZeroAddress);
+    
+    // Get the account contract
+    const account = await ethers.getContractAt("AccountEVM", accountAddress);
+
+    const address = await WA.getAddress();
+
+    // Verify initial controller status
+    expect(await account.isController(address)).to.be.true;
+    expect(await account.isController(account1.address)).to.be.false;
+
+    // Encode controller data
+    const deadline = Math.ceil(new Date().getTime() / 1000) - 3600; // 1 hour before now
+    const controllerData = abiCoder.encode(
+      ["uint256", "address", "bool", "uint256"],
+      [WALLET_TYPE_EVM, account1.address, true, deadline]
+    );
+
+    // Create digest with password
+    const digest = ethers.solidityPackedKeccak256(
+      ['bytes32', 'bytes'],
+      [SIMPLE_PASSWORD, controllerData],
+    );
+
+    // Call modifyController via account manager
+    try {
+      await WA.modifyControllerPassword({
+        hashedUsername: username,
+        digest,
+        data: controllerData
+      });
+    } catch(e: any) {
+      expect(e.toString()).to.have.string("execution reverted: Invalid deadline");
+    }
 
   });
 
@@ -1790,9 +1860,10 @@ describe("AccountManager", function() {
     expect(await account.isController(account1.address)).to.be.false;
 
     // Encode controller data
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now
     const controllerData = abiCoder.encode(
-      ["uint256", "address", "bool"],
-      [WALLET_TYPE_EVM, account1.address, true]
+      ["uint256", "address", "bool", "uint256"],
+      [WALLET_TYPE_EVM, account1.address, true, deadline]
     );
 
     // Create challenge and get credential response
@@ -1858,9 +1929,10 @@ describe("AccountManager", function() {
     expect(await account.isController(account1.address)).to.be.false;
 
     // Encode controller data
-    const controllerData = abiCoder.encode(
-      ["uint256", "address", "bool"],
-      [WALLET_TYPE_EVM, account1.address, true]
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now
+    const controllerData = abiCoder.encode( 
+      ["uint256", "address", "bool", "uint256"],
+      [WALLET_TYPE_EVM, account1.address, true, deadline]
     );
 
     // Create challenge and get credential response

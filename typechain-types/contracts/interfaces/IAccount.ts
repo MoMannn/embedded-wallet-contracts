@@ -32,7 +32,7 @@ export interface IAccountInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "modifyController",
-    values: [AddressLike, boolean]
+    values: [AddressLike, boolean, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "removeWallet",
@@ -103,7 +103,7 @@ export interface IAccount extends BaseContract {
   >;
 
   modifyController: TypedContractMethod<
-    [who: AddressLike, status: boolean],
+    [who: AddressLike, status: boolean, deadline: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -124,7 +124,7 @@ export interface IAccount extends BaseContract {
   getFunction(
     nameOrSignature: "modifyController"
   ): TypedContractMethod<
-    [who: AddressLike, status: boolean],
+    [who: AddressLike, status: boolean, deadline: BigNumberish],
     [void],
     "nonpayable"
   >;
