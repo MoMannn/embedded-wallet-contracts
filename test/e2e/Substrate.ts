@@ -89,7 +89,8 @@ describe("Substrate", function() {
     expect(await WA.userExists(username)).to.equal(true);
 
     const iface = new ethers.Interface(ACCOUNT_SUBSTRATE_ABI);
-    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0]);
+    const deadline = Math.ceil(new Date().getTime() / 1000) + 3600; // 1 hour from now
+    const in_data = iface.encodeFunctionData('exportPrivateKey', [WALLET_IDX_0, deadline]);
 
     const in_digest = ethers.solidityPackedKeccak256(
       ['bytes32', 'bytes'],
